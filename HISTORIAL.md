@@ -67,5 +67,21 @@ Este archivo registra el historial de decisiones, requerimientos, arquitectura y
   - `npm test`: Pasó con éxito el cálculo de duración de 2h para tinte, detección y guardado de nombres de clientes en SQLite, prevención de citas solapadas y formateo amigable de horarios.
   - `npx tsc --noEmit`: 0 errores de tipado.
 
+### 7. Decisión Arquitectónica: Laya (Sistema 1) + LLM Grounded (Sistema 2)
+- **Visión del Usuario para GitHub**:
+  - Implementar **Laya** como motor de decisión y extracción estructurada para evitar que el modelo generativo se confunda con fechas o contexto.
+  - Flujo en dos etapas:
+    1. **Extracción y Clasificación con Laya (~40 ms)**: Lee la conversación y clasifica los tópicos en un formulario limpio: `Nombre`, `Petición/Servicio`, `Día/Hora solicitada`.
+    2. **Validación Determinista**: TypeScript consulta `slotCalculator.ts` y SQLite/Google Calendar para rellenar los `Horarios disponibles` reales y verificar conflictos.
+    3. **Renderizado de Lenguaje Natural (LLM Generativo)**: El modelo recibe el formulario JSON ya validado y se enfoca exclusivamente en redactar una respuesta cálida, empática y orientada al cierre, con **cero riesgo de alucinación** de fechas o disponibilidad.
+- **Ventaja Técnica del Ecosistema**:
+  - Se descubrió el paquete `laya-system-one`:
+    - Modelo nativo compilado en Rust para Linux x64.
+    - Ocupa solo **~324 MB en disco** (cumple holgadamente con la restricción de los 14 GB disponibles).
+    - Basado en `convaiinnovations/laya-multilingual` (`mmBERT-base`, 322M parámetros), con soporte nativo en español.
+    - No requiere Python ni PyTorch, integrándose limpiamente en el proyecto Node.js existente.
+
+
+
 
 

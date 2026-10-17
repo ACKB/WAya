@@ -3,6 +3,7 @@ import { CalendarService } from '../calendar/calendarService.js';
 import { DatabaseService } from '../database/db.js';
 import { buildSystemPrompt } from './prompt.js';
 import { aiTools } from './tools.js';
+import { LayaRouter } from './layaRouter.js';
 
 export interface ChatMessage {
   role: 'system' | 'user' | 'assistant' | 'tool';
@@ -120,9 +121,37 @@ export class AIService {
     // 2. Guardar mensaje del usuario en SQLite
     DatabaseService.saveMessage(phone, 'user', incomingText);
 
-    // 3. Obtener historial reciente
+    // 3. Ejecutar Laya Decision Engine (Sistema 1) para clasificar y generar formulario fáctico
+    let groundedSummary = '';
+    try {
+      const grounded = await LayaRouter.generateGroundedForm(phone, customerName, incomingText);
+      groundedSummary = grounded.formSummaryText;
+      console.log(`⚡ [Laya Decision] Intención: "${grounded.extracted.intent}" | Servicio: "${grounded.extracted.service?.name || 'Ninguno'}" | Fecha: "${grounded.extracted.targetDateStr}"`);
+
+      // Si el cliente pide agendar a una hora exacta y está disponible, registrarlo de inmediato
+      if (
+        grounded.extracted.intent === 'agendar' &&
+        grounded.extracted.service &&
+        grounded.extracted.targetDateStr &&
+        grounded.extracted.timeStr &&
+        grounded.formJson.hora_elegida_disponible === true
+      ) {
+        console.log(`🎯 Confirmando cita automáticamente para ${customerName || phone} a las ${grounded.extracted.timeStr}...`);
+        await CalendarService.bookAppointment({
+          phone,
+          customerName: customerName || 'Cliente',
+          serviceQuery: grounded.extracted.service.id,
+          dateStr: grounded.extracted.targetDateStr,
+          timeStr: grounded.extracted.timeStr
+        });
+      }
+    } catch (layaErr: any) {
+      console.warn('⚠️ Laya Decision Engine aviso:', layaErr?.message || layaErr);
+    }
+
+    // 4. Obtener historial reciente y construir prompt con formulario inyectado
     const recentMessages = DatabaseService.getRecentMessages(phone, 8);
-    const systemPrompt = buildSystemPrompt(customerName, phone);
+    const systemPrompt = buildSystemPrompt(customerName, phone, groundedSummary);
 
     const messages: ChatMessage[] = [
       { role: 'system', content: systemPrompt },
@@ -132,14 +161,13 @@ export class AIService {
       }))
     ];
 
-    // 4. Llamar al proveedor de IA
+    // 5. Llamar al modelo generativo para humanizar y responder con calidez
     try {
       const reply = await this.callAIProvider(messages, phone, customerName);
-      // Guardar respuesta del asistente en SQLite
       DatabaseService.saveMessage(phone, 'assistant', reply);
       return reply;
     } catch (error: any) {
-      console.error('❌ Error al comunicarse con la IA:', error?.message || error);
+      console.error('❌ Error al comunicarse con el modelo generativo:', error?.message || error);
       
       // Mensaje de respaldo amable en caso de fallo de conexión con el LLM
       const fallbackReply = `Hola${customerName ? ' ' + customerName : ''}, un gusto saludarle. En este momento estoy verificando nuestros horarios disponibles. Por favor, indíqueme qué tratamiento desea (como tinte, corte o manicure) y le confirmaremos de inmediato.`;
