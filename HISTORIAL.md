@@ -93,4 +93,14 @@ Este archivo registra el historial de decisiones, requerimientos, arquitectura y
   - Cero alucinaciones de disponibilidad o fechas.
   - Compilación TypeScript sin errores.
 
+### 9. Adopción de llama.cpp y Automatización (setup.sh, SystemOn.sh, SystemOff.sh)
+- **Decisión del Usuario**: Emplear **llama.cpp** como motor nativo de inferencia local en lugar de LM Studio/Ollama, con scripts automatizados de ciclo de vida.
+- **Implementaciones realizadas**:
+  - `servicios.json`: Archivo de configuración intuitivo en español para editar nombres de tratamientos, duraciones en minutos y precios.
+  - `src/config.ts`: Actualizado para mapear dinámicamente `servicios.json`.
+  - `bin/llama-server`: Binario portátil de `llama.cpp` alojado dentro del proyecto (`./bin/`), garantizando total limpieza del sistema y portabilidad (Regla #8 y #10).
+  - `setup.sh`: Script interactivo de instalación que instala dependencias, descarga `llama-server`, descarga `Llama-3.2-3B-Instruct-Q4_K_M.gguf` (~2.0 GB) y ofrece escanear el QR de WhatsApp en el primer arranque.
+  - `SystemOn.sh`: Script de encendido completo. Verifica si hay una sesión previa activa; si existe, la apaga limpiamente, levanta `llama-server` en background en el puerto 8080 con aceleración GPU (`-ngl 99`), espera el chequeo de salud y lanza el bot de WhatsApp con Laya y recordatorios.
+  - `SystemOff.sh`: Script de apagado limpio. Cierra el bot, detiene `llama-server` y verifica mediante `nvidia-smi` que la VRAM de la GPU RTX 5070 Ti quede 100% liberada para videojuegos.
+
 

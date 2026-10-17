@@ -5,3 +5,5 @@ data/
 credentials.json
 .env
 *.log
+models/
+bin/llama-*

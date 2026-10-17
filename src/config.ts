@@ -27,12 +27,51 @@ export interface ServicesConfig {
   services: ServiceItem[];
 }
 
-const servicesPath = path.resolve(process.cwd(), 'services.json');
+const serviciosJsonPath = path.resolve(process.cwd(), 'servicios.json');
+const servicesJsonPath = path.resolve(process.cwd(), 'services.json');
 let servicesData: ServicesConfig;
 
 try {
-  const raw = fs.readFileSync(servicesPath, 'utf-8');
-  servicesData = JSON.parse(raw);
+  if (fs.existsSync(serviciosJsonPath)) {
+    const raw = fs.readFileSync(serviciosJsonPath, 'utf-8');
+    const parsed = JSON.parse(raw);
+    const dayMap: Record<string, string> = {
+      lunes: 'monday', martes: 'tuesday', miercoles: 'wednesday',
+      jueves: 'thursday', viernes: 'friday', sabado: 'saturday', domingo: 'sunday'
+    };
+    const workingHours: Record<string, WorkingHourInterval[]> = {};
+    const rawHours = parsed.negocio?.horarios_atencion || {};
+    for (const [esDay, intervals] of Object.entries(rawHours)) {
+      const enDay = dayMap[esDay.toLowerCase()] || esDay;
+      workingHours[enDay] = (intervals as any[]).map(i => ({
+        start: i.inicio || i.start,
+        end: i.fin || i.end
+      }));
+    }
+
+    const services: ServiceItem[] = (parsed.servicios || []).map((s: any) => ({
+      id: s.id,
+      name: s.nombre || s.name,
+      aliases: s.sinonimos || s.aliases || [s.id],
+      durationMinutes: s.duracion_minutos || s.durationMinutes || 30,
+      price: s.precio || s.price || 0,
+      description: s.descripcion || s.description || ''
+    }));
+
+    servicesData = {
+      business: {
+        name: parsed.negocio?.nombre || 'Salón de Belleza',
+        timezone: parsed.negocio?.zona_horaria || 'America/Lima',
+        workingHours
+      },
+      services
+    };
+  } else if (fs.existsSync(servicesJsonPath)) {
+    const raw = fs.readFileSync(servicesJsonPath, 'utf-8');
+    servicesData = JSON.parse(raw);
+  } else {
+    throw new Error('No configuration file found');
+  }
 } catch (error) {
   console.warn('⚠️ No se pudo leer services.json, usando configuración por defecto.');
   servicesData = {
