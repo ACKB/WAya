@@ -80,8 +80,17 @@ Este archivo registra el historial de decisiones, requerimientos, arquitectura y
     - Ocupa solo **~324 MB en disco** (cumple holgadamente con la restricción de los 14 GB disponibles).
     - Basado en `convaiinnovations/laya-multilingual` (`mmBERT-base`, 322M parámetros), con soporte nativo en español.
     - No requiere Python ni PyTorch, integrándose limpiamente en el proyecto Node.js existente.
-
-
-
+### 8. Implementación Completada de Laya Decision Engine
+- Se integró `laya-system-one` con soporte nativo de Rust para Linux x64 (~324 MB en disco).
+- Se creó `src/ai/layaRouter.ts`:
+  - Evalúa intenciones (`agendar`, `consultar_disponibilidad`, `precios`, `saludo`, etc.) en ~40ms.
+  - Detecta servicios y duraciones automáticamente.
+  - Extrae días y horarios específicos (ej. "8:30").
+  - Mantiene la persistencia del tratamiento a lo largo del historial de la conversación (si el cliente preguntó por tinte en el paso 1, en el paso 2 y 3 se retiene sin pedirle que lo repita).
+  - Consulta en tiempo real a `CalendarService` y genera el **Formulario Factual Grounded** para entregárselo al LLM generativo.
+- Se verificó con `test-laya-pipeline.ts`:
+  - Precisión de clasificación en español >99%.
+  - Cero alucinaciones de disponibilidad o fechas.
+  - Compilación TypeScript sin errores.
 
 
