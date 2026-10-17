@@ -1,0 +1,74 @@
+{
+  "business": {
+    "name": "Estética y Salón Bellísima",
+    "timezone": "America/Lima",
+    "workingHours": {
+      "monday": [
+        { "start": "08:00", "end": "13:00" },
+        { "start": "14:00", "end": "20:00" }
+      ],
+      "tuesday": [
+        { "start": "08:00", "end": "13:00" },
+        { "start": "14:00", "end": "20:00" }
+      ],
+      "wednesday": [
+        { "start": "08:00", "end": "13:00" },
+        { "start": "14:00", "end": "20:00" }
+      ],
+      "thursday": [
+        { "start": "08:00", "end": "13:00" },
+        { "start": "14:00", "end": "20:00" }
+      ],
+      "friday": [
+        { "start": "08:00", "end": "13:00" },
+        { "start": "14:00", "end": "20:00" }
+      ],
+      "saturday": [
+        { "start": "09:00", "end": "18:00" }
+      ],
+      "sunday": []
+    }
+  },
+  "services": [
+    {
+      "id": "tinte",
+      "name": "Tinte de Cabello",
+      "aliases": ["tinte", "teñir", "color", "mechas", "balayage", "coloracion"],
+      "durationMinutes": 120,
+      "price": 80,
+      "description": "Aplicación de coloración completa, incluye lavado y secado (demora 2 horas)."
+    },
+    {
+      "id": "corte_dama",
+      "name": "Corte de Cabello Dama",
+      "aliases": ["corte dama", "corte de mujer", "corte mujer", "despunte"],
+      "durationMinutes": 45,
+      "price": 35,
+      "description": "Corte de diseño para mujer, lavado y peinado rápido."
+    },
+    {
+      "id": "corte_caballero",
+      "name": "Corte de Cabello Caballero",
+      "aliases": ["corte caballero", "corte hombre", "corte varon", "barberia"],
+      "durationMinutes": 30,
+      "price": 25,
+      "description": "Corte clásico o moderno con máquina y tijera."
+    },
+    {
+      "id": "manicure",
+      "name": "Manicure y Esmaltado",
+      "aliases": ["manicure", "uñas", "esmaltado", "manicura"],
+      "durationMinutes": 45,
+      "price": 30,
+      "description": "Limpieza, limado y esmaltado de uñas."
+    },
+    {
+      "id": "alisado",
+      "name": "Alisado Keratina",
+      "aliases": ["alisado", "keratina", "botox capilar", "alaciado"],
+      "durationMinutes": 180,
+      "price": 150,
+      "description": "Tratamiento de alisado profundo con keratina (demora 3 horas)."
+    }
+  ]
+}

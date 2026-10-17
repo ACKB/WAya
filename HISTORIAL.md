@@ -1,0 +1,71 @@
+# Historial del Proyecto - Bot de WhatsApp para Gestión de Citas
+
+Este archivo registra el historial de decisiones, requerimientos, arquitectura y avances del proyecto para garantizar continuidad entre sesiones o agentes de IA.
+
+---
+
+## 📅 Sesión Inicial: 16 de Octubre de 2026
+
+### 1. Requerimientos del Usuario
+- **Objetivo**: Bot inteligente para WhatsApp enfocado en negocios de servicios con citas de duración variable (peluquerías, odontologías, barberías, etc.).
+- **Características clave**:
+  - **Duración variable por tratamiento**: Detecta automáticamente el tiempo necesario según el servicio (ej. tinte = 2h, corte = 30min).
+  - **Conversación natural y orientada a cerrar la cita**: Tono cálido, sencillo, apto para adultos mayores o personas poco familiarizadas con la tecnología.
+  - **Memoria conversacional contextual**: Recuerda el nombre, preferencias o datos ya dados por el cliente en el mismo chat (no volver a pedir nombre a menos que sea para un tercero).
+  - **Manejo inteligente de disponibilidad**: Búsqueda de huecos libres, manejo de días llenos, propuestas de alternativas cercanas o para la siguiente semana.
+  - **Recordatorios automáticos**: Notificación por WhatsApp 1 hora antes de la cita recomendando llegar con 15 minutos de anticipación.
+  - **Integraciones deseadas**:
+    - WhatsApp (conexión directa o API).
+    - Google Calendar (sincronización bidireccional de horarios y reservas).
+    - Motor de Inteligencia Artificial (híbrido: adaptable a IA local vía Ollama o IA en la nube como Gemini/OpenAI).
+
+### 2. Contexto de Hardware y Reglas del Sistema
+- **Máquina**: Intel Core Ultra 7 255HX, 16 GB RAM, RTX 5070 Ti (12GB VRAM), Linux dual boot.
+- **Ollama**: Instalado localmente con `qwen2.5:14b-instruct-q4_k_m` y `qwen2.5-coder:14b-instruct-q4_k_m`.
+- **Restricción de Recursos**: El usuario usa la laptop para gaming; no bloquear VRAM permanentemente. Mantener consumo de RAM bajo.
+- **Filosofía**: Dependencias locales al proyecto (`node_modules` o `venv`), infraestructura en Docker si aplica, o SQLite local para máxima ligereza y portabilidad.
+
+### 3. Diagnóstico Técnico del Sistema
+- Node.js `v26.11.1` y npm `12.2.0` instalados y listos.
+- Python `3.14.8` disponible.
+- Docker: No instalado en el sistema actualmente.
+- LM Studio binario detectado en PATH (`/home/ackb/.lmstudio/bin`).
+- **Decisión de Arquitectura**: Para respetar las restricciones de RAM (16 GB) y no requerir instalar Docker, el bot se construirá en **Node.js + TypeScript**, utilizando **SQLite** local (cero consumo en reposo) y una capa modular para IA y WhatsApp.
+
+### 5. Acuerdos y Decisiones (Proyecto Universitario)
+- **Alcance**: Proyecto académico/universitario. Prioridad a la simplicidad, claridad de código, facilidad para demostrar en vivo y bajo consumo de recursos.
+- **WhatsApp**: Conector directo **Baileys** (WebSockets, código QR escaneable en la terminal). No requiere cuenta de empresa en Meta ni webhooks públicos.
+- **Motor de IA**:
+  - Enfoque inicial: **IA Local** mediante protocolo compatible con OpenAI (`http://localhost:11434/v1` para Ollama o `http://localhost:1234/v1` para LM Studio).
+  - Alerta de espacio: Actualmente hay **14 GB disponibles** en el disco SSD (`/dev/nvme0n1p6`). Por precaución, para modelos locales se recomiendan pesos ligeros (3B a 7B, ~2-4 GB) o conectar a un servidor ya existente.
+  - Diseño modular: Transición transparente a IA en la nube (Gemini/OpenAI) modificando únicamente el archivo `.env`.
+- **Memoria Contextual**: **SQLite** local vía `better-sqlite3` o `sqlite3` para almacenar:
+  - Nombres detectados por número telefónico (para no volver a pedirlo a María).
+  - Historial reciente de la conversación.
+  - Citas agendadas y marcas de recordatorios enviados.
+- **Google Calendar**: Módulo con soporte dual (Google Calendar API real mediante Service Account + Mock local para pruebas sin credenciales).
+- **Recordatorios**: Tarea programada que inspecciona citas pendientes y envía alerta 60 minutos antes recordando llegar con 15 minutos de anticipación.
+
+### 6. Implementación y Validación Técnica (16 de Octubre de 2026)
+- **Archivos creados**:
+  - `services.json`: Catálogo de tratamientos con duraciones en minutos (tinte 120m, corte dama 45m, corte caballero 30m, alisado 180m, etc.) y horarios de atención.
+  - `src/config.ts`: Carga de configuración y servicios tipados.
+  - `src/database/db.ts`: Base de datos SQLite nativa (`node:sqlite`) con tablas para memoria de usuarios, historial de chat y reservas.
+  - `src/calendar/slotCalculator.ts`: Algoritmo que calcula huecos continuos según duración del servicio y los agrupa en rangos amigables para personas mayores.
+  - `src/calendar/calendarService.ts`: Gestor de calendario con soporte dual (Google Calendar Service Account y fallback local automático).
+  - `src/ai/prompt.ts`: Prompt del sistema orientado a la amabilidad, sencillez y cierre de cita.
+  - `src/ai/tools.ts`: Definición de Function Calling (OpenAI schema) para consultar disponibilidad, agendar y guardar nombres.
+  - `src/ai/aiService.ts`: Cliente universal de IA compatible con Ollama, LM Studio y Cloud, con extracción heurística de nombres.
+  - `src/scheduler/reminder.ts`: Cron que inspecciona citas pendientes 1 hora antes y envía notificación por WhatsApp recomendando llegar con 15 minutos de anticipación.
+  - `src/whatsapp/client.ts`: Cliente Baileys con autenticación multi-file y renderizado de código QR en consola.
+  - `src/bot/orchestrator.ts`: Orquestador que conecta WhatsApp con la memoria y la IA.
+  - `src/index.ts`: Punto de entrada principal para producción/ejecución con WhatsApp.
+  - `src/simulator.ts`: Simulador interactivo en terminal (`npm run simulate`) para pruebas y exposiciones universitarias.
+  - `test-logic.ts`: Suite de pruebas unitarias (`npm test`).
+
+- **Resultados de pruebas**:
+  - `npm test`: Pasó con éxito el cálculo de duración de 2h para tinte, detección y guardado de nombres de clientes en SQLite, prevención de citas solapadas y formateo amigable de horarios.
+  - `npx tsc --noEmit`: 0 errores de tipado.
+
+
+
