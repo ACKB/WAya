@@ -170,7 +170,10 @@ export class AIService {
       console.error('❌ Error al comunicarse con el modelo generativo:', error?.message || error);
       
       // Mensaje de respaldo amable en caso de fallo de conexión con el LLM
-      const fallbackReply = `Hola${customerName ? ' ' + customerName : ''}, un gusto saludarle. En este momento estoy verificando nuestros horarios disponibles. Por favor, indíqueme qué tratamiento desea (como tinte, corte o manicure) y le confirmaremos de inmediato.`;
+      let fallbackReply = `Hola${customerName ? ' ' + customerName : ''}, un gusto saludarle. En este momento estoy verificando nuestros horarios disponibles. Por favor, indíqueme qué tratamiento desea (como tinte, corte o manicure) y le confirmaremos de inmediato.`;
+      if (groundedSummary.includes('DESVÍO DE TEMA DETECTADO')) {
+        fallbackReply = `Hola${customerName ? ' ' + customerName : ''}, hay que evitar movernos de tema. ¿Para cuándo quisiera su cita o qué tipo de tratamiento desea?`;
+      }
       DatabaseService.saveMessage(phone, 'assistant', fallbackReply);
       return fallbackReply;
     }

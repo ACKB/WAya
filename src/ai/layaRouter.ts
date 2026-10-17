@@ -10,6 +10,7 @@ export interface LayaExtractedForm {
   dayName: string | null;
   targetDateStr: string | null;
   timeStr: string | null;
+  isOffTopic: boolean;
   confidence: number;
 }
 
@@ -116,6 +117,14 @@ export class LayaRouter {
     if (this.layaInstance) {
       try {
         const result = await this.layaInstance.predict(text, {
+          tema: {
+            type: 'choice',
+            instructions: '¿El cliente está hablando de servicios del salón o de un tema externo?',
+            criteria: {
+              salon_citas: 'agendar cita, elegir o confirmar horarios (lunes, martes, etc., a las 8:30, etc.), decir que le parece bien una hora o fecha, tintes, cortes, estética, precios o saludos',
+              tema_externo: 'pedir chistes, bromas, código de programación, matemáticas, tareas, ciencia, recetas de comida o temas ajenos al salón'
+            }
+          },
           intent: {
             type: 'choice',
             instructions: '¿Cuál es la intención principal del usuario en este mensaje?',
@@ -159,6 +168,7 @@ export class LayaRouter {
         });
 
         const answers = result.answers || {};
+        let isOffTopic = answers.tema?.choice === 'tema_externo';
         const intentChoice = answers.intent?.choice || 'otro';
         const serviceChoice = answers.servicio?.choice;
         const dayChoice = answers.dia?.choice;
@@ -166,6 +176,11 @@ export class LayaRouter {
         const resolvedService = serviceChoice && serviceChoice !== 'ninguno'
           ? CalendarService.findService(serviceChoice)
           : null;
+
+        // Salvaguarda: si menciona una hora explícita, un día válido o un servicio, nunca es fuera de tema
+        if (specificTime || resolvedService || (dayChoice && dayChoice !== 'no_mencionado')) {
+          isOffTopic = false;
+        }
 
         const targetDate = this.resolveDateFromDay(dayChoice);
 
@@ -175,6 +190,7 @@ export class LayaRouter {
           dayName: dayChoice !== 'no_mencionado' ? dayChoice : null,
           targetDateStr: targetDate,
           timeStr: specificTime,
+          isOffTopic,
           confidence: answers.intent?.confidence || 0.9,
         };
       } catch (err: any) {
@@ -190,6 +206,7 @@ export class LayaRouter {
       dayName: null,
       targetDateStr: this.resolveDateFromDay(null),
       timeStr: specificTime,
+      isOffTopic: false,
       confidence: 0.8
     };
   }
@@ -207,6 +224,27 @@ export class LayaRouter {
     extracted: LayaExtractedForm;
   }> {
     const extracted = await this.evaluate(text);
+
+    // Guardrail: Si el usuario se sale del tema, abortar consulta y forzar redirección
+    if (extracted.isOffTopic) {
+      const offTopicText = `
+⚠️ ALERTA DE GUARDRAIL (DESVÍO DE TEMA DETECTADO POR LAYA):
+- ESTADO: El cliente ha hecho una pregunta o comentario ajeno a la peluquería o salón de belleza.
+- INSTRUCCIÓN OBLIGATORIA PARA TU RESPUESTA:
+  1. Dile amablemente una frase como: "Hay que evitar movernos de tema" o "Para no salirnos del tema".
+  2. Redirige inmediatamente la conversación preguntándole: "¿Para cuándo quisiera su cita o qué tipo de tratamiento desea?".
+  3. NUNCA resuelvas la petición externa (no escribas código, no hagas cálculos matemáticos, no cuentes chistes ni hables de cosas ajenas al salón).
+`.trim();
+
+      const formJson = {
+        cliente: customerName || 'Aún no proporcionado',
+        telefono: phone,
+        fuera_de_tema: true,
+        instruccion: 'Redirigir a citas diciendo: "Hay que evitar movernos de tema. ¿Para cuándo quisiera su cita o qué tipo de tratamiento desea?"'
+      };
+
+      return { formJson, formSummaryText: offTopicText, extracted };
+    }
 
     // Si no se detectó servicio en este mensaje, buscar en el historial reciente de la conversación
     if (!extracted.service) {
