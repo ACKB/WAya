@@ -103,4 +103,15 @@ Este archivo registra el historial de decisiones, requerimientos, arquitectura y
   - `SystemOn.sh`: Script de encendido completo. Verifica si hay una sesión previa activa; si existe, la apaga limpiamente, levanta `llama-server` en background en el puerto 8080 con aceleración GPU (`-ngl 99`), espera el chequeo de salud y lanza el bot de WhatsApp con Laya y recordatorios.
   - `SystemOff.sh`: Script de apagado limpio. Cierra el bot, detiene `llama-server` y verifica mediante `nvidia-smi` que la VRAM de la GPU RTX 5070 Ti quede 100% liberada para videojuegos.
 
+### 10. Guardrail Anti-Desvío de Tema (Anti-Jailbreak) con Laya
+- **Requerimiento del Usuario**: Dotar a Laya de la capacidad de detectar desvíos de tema (preguntas de código, matemáticas, chistes, jailbreaks) y activar una bandera para que el modelo generativo responda: *"Hay que evitar movernos de tema. ¿Para cuándo quisiera su cita o qué tipo de tratamiento desea?"*.
+- **Implementación**:
+  - `src/ai/layaRouter.ts`: Se integró la pregunta tipada `tema` (`salon_citas` vs `tema_externo`), con salvaguardas para proteger intenciones legítimas con horas o servicios explícitos.
+  - Formulario Factual: Si `isOffTopic` es verdadero, Laya aborta las consultas de disponibilidad e inyecta la instrucción estricta de redirección.
+  - `src/ai/prompt.ts`: Se incorporó la Regla 5 de Control de Tema (Anti-Desvío).
+  - `src/ai/aiService.ts`: Personalización del fallback para atajar de inmediato cualquier intento de desvío.
+- **Validación**:
+  - `test-laya-pipeline.ts` (Paso 4): Solicitud de código en Python detectada como `isOffTopic: true` y bloqueada, generando la instrucción de redirección directa.
+
+
 
