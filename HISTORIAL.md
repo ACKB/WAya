@@ -119,5 +119,6 @@ Este archivo registra el historial de decisiones, requerimientos, arquitectura y
   - `git remote -v`: No tiene ningún remoto asociado actualmente.
   - `gh auth status`: La cuenta `ACKB` está autenticada y activa en el CLI de GitHub.
   - `gh repo list`: No existe aún un repositorio remoto creado para este proyecto.
-- **Estado Actual**: El proyecto reside de manera 100% local en `/home/ackb/Downloads/Proyecto`, listo para publicarse en cuanto el usuario indique el nombre deseado y la visibilidad (pública o privada).
+- **Estado Actual**: El proyecto reside de manera 100% local en `/home/ackb/Downloads/Proyecto`.
+- **Propuesta de Nomenclatura**: Se evalúan nombres orientados a IA y WhatsApp (`WA`) para el repositorio (ej. `wagent-ai`, `wa-laya-ai`, `wa-scheduler-ai`, `wa-citas-ai`).
 
