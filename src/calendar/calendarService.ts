@@ -135,7 +135,8 @@ export class CalendarService {
     } else {
       const lines = availableDays.slice(0, 3).map(d => {
         const friendlyRange = SlotCalculator.formatFriendlyRanges(d.slots);
-        return `${d.dayOfWeek} (${d.date}): ${friendlyRange}`;
+        const dateInfo = SlotCalculator.formatDateEs(d.date);
+        return `${dateInfo.fullDateEs}: ${friendlyRange}`;
       });
       summaryText = `Para ${service.name} (${service.durationMinutes} min), tenemos disponible:\n` + lines.join('\n');
     }

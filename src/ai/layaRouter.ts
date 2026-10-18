@@ -78,23 +78,37 @@ export class LayaRouter {
   }
 
   /**
-   * Extrae la hora específica si el usuario la escribió (ej. "8:30", "a las 9", "18:00")
+   * Extrae la hora específica o la hora de inicio si el usuario la escribió (ej. "8:30", "a las 9", "de 10 a 11:30")
    */
   static extractSpecificTime(text: string): string | null {
-    // Patrón 1: "8:30", "08:30", "14:00"
-    const matchTime = text.match(/(?:a\s+las\s+)?(\d{1,2}):(\d{2})/i);
-    if (matchTime) {
-      const h = String(matchTime[1]).padStart(2, '0');
-      const m = matchTime[2];
-      return `${h}:${m}`;
+    // 1. Detección de rangos: ej. "de 10 a 11:30", "de 10:00 a 12:00", "entre las 14 y 16" -> Extraer la hora de inicio
+    const matchRange = text.match(/(?:de|desde|entre)?\s*(\d{1,2})(?::(\d{2}))?\s*(?:a|hasta|y|-)\s*(\d{1,2})(?::(\d{2}))?/i);
+    if (matchRange && matchRange[1] && matchRange[3]) {
+      let h = parseInt(matchRange[1], 10);
+      const m = matchRange[2] || '00';
+      if ((text.toLowerCase().includes('pm') || text.toLowerCase().includes('tarde')) && h < 12) {
+        h += 12;
+      }
+      return `${String(h).padStart(2, '0')}:${m}`;
     }
 
-    // Patrón 2: "a las 9", "a las 4 de la tarde"
-    const matchHour = text.match(/a\s+las\s+(\d{1,2})(?:\s*(am|pm|de la mañana|de la tarde))?/i);
+    // 2. Hora exacta con minutos: "8:30", "08:30", "14:00", "a las 8:30"
+    const matchTime = text.match(/(?:a\s+las?|para\s+las?|de)?\s*(\d{1,2}):(\d{2})/i);
+    if (matchTime) {
+      let h = parseInt(matchTime[1], 10);
+      const m = matchTime[2];
+      if ((text.toLowerCase().includes('pm') || text.toLowerCase().includes('tarde')) && h < 12) {
+        h += 12;
+      }
+      return `${String(h).padStart(2, '0')}:${m}`;
+    }
+
+    // 3. Hora simple sin minutos: "a las 8", "para las 8", "a las 10", "tipo 4 de la tarde"
+    const matchHour = text.match(/(?:a\s+las?|para\s+las?|a\s+la|a|tipo)\s*(\d{1,2})(?:\s*(am|pm|de la mañana|de la tarde))?/i);
     if (matchHour) {
       let h = parseInt(matchHour[1], 10);
       const modifier = (matchHour[2] || '').toLowerCase();
-      if ((modifier.includes('pm') || modifier.includes('tarde')) && h < 12) {
+      if ((modifier.includes('pm') || modifier.includes('tarde') || text.toLowerCase().includes('tarde')) && h < 12) {
         h += 12;
       }
       return `${String(h).padStart(2, '0')}:00`;
@@ -121,7 +135,7 @@ export class LayaRouter {
             type: 'choice',
             instructions: '¿El cliente está hablando de servicios del salón o de un tema externo?',
             criteria: {
-              salon_citas: 'agendar cita, elegir o confirmar horarios (lunes, martes, etc., a las 8:30, etc.), decir que le parece bien una hora o fecha, tintes, cortes, estética, precios o saludos',
+              salon_citas: 'agendar cita, elegir o confirmar horarios (lunes, martes, etc., a las 8:30, etc.), decir que le parece bien una hora o fecha, tintes, cortes, estética, colores, precios o saludos',
               tema_externo: 'pedir chistes, bromas, código de programación, matemáticas, tareas, ciencia, recetas de comida o temas ajenos al salón'
             }
           },
@@ -132,7 +146,7 @@ export class LayaRouter {
               agendar: 'quiere reservar, apartar, elegir hora o confirmar una cita para un tratamiento',
               consultar_disponibilidad: 'pregunta qué días u horarios tienen libres o si hay lugar',
               consultar_precios: 'pregunta cuánto cuesta un servicio o qué servicios ofrecen',
-              cancelar: 'quiere cancelar, anular o posponer su cita',
+              cancelar: 'palabras explícitas de cancelación como cancelar cita, anular reserva, no podré ir, dar de baja',
               saludo: 'únicamente saluda, agradece o se despide sin pedir cita',
               otro: 'cualquier otro tema'
             }
@@ -169,7 +183,7 @@ export class LayaRouter {
 
         const answers = result.answers || {};
         let isOffTopic = answers.tema?.choice === 'tema_externo';
-        const intentChoice = answers.intent?.choice || 'otro';
+        let intentChoice = answers.intent?.choice || 'otro';
         const serviceChoice = answers.servicio?.choice;
         const dayChoice = answers.dia?.choice;
 
@@ -182,12 +196,24 @@ export class LayaRouter {
           isOffTopic = false;
         }
 
-        const targetDate = this.resolveDateFromDay(dayChoice);
+        // Si el usuario propone o confirma hora, fecha o servicio, NUNCA es cancelar a menos que diga cancelar explícitamente
+        const textLower = text.toLowerCase();
+        if (specificTime || textLower.includes('para el') || textLower.includes('que sea') || textLower.includes('dale') || textLower.includes('perfecto') || textLower.includes('me quedo con')) {
+          if (!textLower.includes('cancel') && !textLower.includes('anul') && !textLower.includes('no voy')) {
+            intentChoice = 'agendar';
+          }
+        }
+
+        // Validar si el día realmente fue mencionado explícitamente en el texto
+        const daysKeywords = ['lunes', 'martes', 'miercoles', 'miércoles', 'jueves', 'viernes', 'sabado', 'sábado', 'domingo', 'hoy', 'manana', 'mañana'];
+        const explicitlyMentionedDay = daysKeywords.find(d => textLower.includes(d));
+        const finalDayName = explicitlyMentionedDay ? (dayChoice !== 'no_mencionado' ? dayChoice : null) : null;
+        const targetDate = this.resolveDateFromDay(finalDayName);
 
         return {
           intent: intentChoice,
           service: resolvedService,
-          dayName: dayChoice !== 'no_mencionado' ? dayChoice : null,
+          dayName: finalDayName,
           targetDateStr: targetDate,
           timeStr: specificTime,
           isOffTopic,
@@ -246,67 +272,133 @@ export class LayaRouter {
       return { formJson, formSummaryText: offTopicText, extracted };
     }
 
-    // Si no se detectó servicio en este mensaje, buscar en el historial reciente de la conversación
-    if (!extracted.service) {
+    // 1. Obtener borrador acumulado de la sesión en SQLite
+    let draft = DatabaseService.getDraft(phone);
+
+    // Actualizar nombre si ya se conoce
+    if (customerName && !draft.customer_name) {
+      draft = DatabaseService.updateDraft(phone, { customer_name: customerName });
+    }
+
+    // Actualizar servicio si se detectó uno nuevo
+    if (extracted.service) {
+      draft = DatabaseService.updateDraft(phone, {
+        service_id: extracted.service.id,
+        service_name: extracted.service.name,
+        duration_minutes: extracted.service.durationMinutes
+      });
+    }
+
+    // Actualizar fecha si se detectó un día
+    if (extracted.targetDateStr && extracted.dayName) {
+      draft = DatabaseService.updateDraft(phone, { date_str: extracted.targetDateStr });
+    }
+
+    // Si aún no tenemos fecha en el borrador pero se mencionó en mensajes previos
+    if (!draft.date_str) {
       const recent = DatabaseService.getRecentMessages(phone, 6);
+      const days = ['lunes', 'martes', 'miercoles', 'miércoles', 'jueves', 'viernes', 'sabado', 'sábado', 'domingo', 'hoy', 'mañana'];
       for (let i = recent.length - 1; i >= 0; i--) {
-        const prevService = CalendarService.findService(recent[i].content);
-        if (prevService) {
-          extracted.service = prevService;
+        const msgLower = recent[i].content.toLowerCase();
+        const foundDay = days.find(d => msgLower.includes(d));
+        if (foundDay) {
+          const normDay = foundDay.replace('miércoles', 'miercoles').replace('sábado', 'sabado');
+          const resolved = this.resolveDateFromDay(normDay);
+          draft = DatabaseService.updateDraft(phone, { date_str: resolved });
           break;
         }
       }
     }
 
-    // Corregir intención si el mensaje contiene confirmación aunque empiece con "no" (ej. "no, está bien el lunes")
-    if (extracted.timeStr && (text.toLowerCase().includes('esta bien') || text.toLowerCase().includes('perfecto') || text.toLowerCase().includes('dale'))) {
-      extracted.intent = 'agendar';
+    // Corregir intención si el mensaje contiene confirmación o selección de hora (ej. "ya, que sea de 10 a 11:30", "dale", "perfecto")
+    const lowerConfirm = text.toLowerCase();
+    if (extracted.timeStr || lowerConfirm.includes('que sea') || lowerConfirm.includes('esta bien') || lowerConfirm.includes('perfecto') || lowerConfirm.includes('dale') || lowerConfirm.includes('me quedo')) {
+      if (!lowerConfirm.includes('cancel') && !lowerConfirm.includes('anul')) {
+        extracted.intent = 'agendar';
+      }
     }
 
     let availabilitySummary = 'No consultada';
     let isTargetSlotAvailable: boolean | null = null;
     let alternativeSlots = '';
 
-    // Si detectamos un servicio, consultamos disponibilidad exacta sin alucinaciones
-    if (extracted.service) {
-      const avail = await CalendarService.checkAvailability(extracted.service.name, extracted.targetDateStr || undefined);
+    const effectiveServiceName = draft.service_name || (extracted.service ? extracted.service.name : null);
+    const effectiveDateStr = draft.date_str || extracted.targetDateStr;
+    const duration = draft.duration_minutes || (extracted.service ? extracted.service.durationMinutes : 30);
+
+    if (effectiveServiceName) {
+      const avail = await CalendarService.checkAvailability(effectiveServiceName, effectiveDateStr || undefined);
       availabilitySummary = avail.summaryText;
 
-      // Si el cliente especificó una hora exacta (ej. 08:30)
-      if (extracted.timeStr && extracted.targetDateStr) {
-        const busy = await CalendarService.getBusyIntervalsForDate(extracted.targetDateStr);
-        const freeSlots = SlotCalculator.calculateFreeSlots(extracted.targetDateStr, extracted.service.durationMinutes, busy);
+      // Si el cliente especificó una hora (ej. "10:00" o "de 10 a 11:30")
+      if (extracted.timeStr && effectiveDateStr) {
+        const busy = await CalendarService.getBusyIntervalsForDate(effectiveDateStr);
+        const freeSlots = SlotCalculator.calculateFreeSlots(effectiveDateStr, duration, busy);
         isTargetSlotAvailable = freeSlots.slots.some(s => s.start === extracted.timeStr);
-        if (!isTargetSlotAvailable) {
+        if (isTargetSlotAvailable) {
+          const startMin = SlotCalculator.timeToMinutes(extracted.timeStr);
+          const end24 = SlotCalculator.minutesToTime(startMin + duration);
+          draft = DatabaseService.updateDraft(phone, {
+            start_time: extracted.timeStr,
+            end_time: end24
+          });
+        } else {
           alternativeSlots = SlotCalculator.formatFriendlyRanges(freeSlots.slots);
         }
       }
     }
 
+    // Evaluar qué falta coordinar
+    const missingFields: string[] = [];
+    if (!draft.service_name) missingFields.push('servicio (qué tratamiento desea)');
+    if (!draft.date_str) missingFields.push('día (para qué fecha desea su cita)');
+    if (!draft.start_time) missingFields.push('hora (a qué hora prefiere asistir)');
+    if (!draft.customer_name) missingFields.push('nombre (su nombre para registrar la cita)');
+
+    const isComplete = missingFields.length === 0 && Boolean(draft.start_time) && Boolean(draft.date_str);
+
+    let respuestaFija: string | null = null;
+    if (isComplete && draft.date_str && draft.start_time && draft.end_time) {
+      const dateInfo = SlotCalculator.formatDateEs(draft.date_str);
+      const horaInicio12 = SlotCalculator.to12Hour(draft.start_time);
+      const horaFin12 = SlotCalculator.to12Hour(draft.end_time);
+
+      // Estructura fija solicitada:
+      // "Entonces señor o señora X, quedamos para el dia Y de Z de A a B para M"
+      respuestaFija = `Entonces señor o señora ${draft.customer_name}, quedamos para el día ${dateInfo.dayNumber} de ${dateInfo.monthName} de ${horaInicio12} a ${horaFin12} para ${draft.service_name}. ¡Le esperamos con mucho gusto!`;
+    }
+
+    const dateInfo = draft.date_str ? SlotCalculator.formatDateEs(draft.date_str) : null;
     const formJson = {
-      cliente: customerName || 'Aún no proporcionado',
-      telefono: phone,
-      intencion_detectada: extracted.intent,
-      servicio_solicitado: extracted.service ? `${extracted.service.name} (${extracted.service.durationMinutes} minutos)` : 'No especificado aún',
-      dia_solicitado: extracted.dayName || 'No especificado',
-      fecha_calculada: extracted.targetDateStr,
-      hora_solicitada: extracted.timeStr || 'No especificada',
+      cliente: draft.customer_name,
+      servicio: draft.service_name,
+      duracion_minutos: draft.duration_minutes,
+      fecha: draft.date_str,
+      dia_nombre: dateInfo ? dateInfo.dayName : null,
+      dia_numero: dateInfo ? dateInfo.dayNumber : null,
+      mes_nombre: dateInfo ? dateInfo.monthName : null,
+      hora_inicio_24: draft.start_time,
+      hora_fin_24: draft.end_time,
+      hora_inicio_12: draft.start_time ? SlotCalculator.to12Hour(draft.start_time) : null,
+      hora_fin_12: draft.end_time ? SlotCalculator.to12Hour(draft.end_time) : null,
       disponibilidad_real: availabilitySummary,
       hora_elegida_disponible: isTargetSlotAvailable,
-      horarios_alternativos_si_esta_lleno: alternativeSlots || 'Ninguno'
+      horarios_alternativos: alternativeSlots || 'Ninguno',
+      faltantes: missingFields,
+      completo: isComplete,
+      respuesta_fija_confirmacion: respuestaFija
     };
 
     const formSummaryText = `
 📋 FORMULARIO FACTUAL DE CITAS (Validado por Laya Decision Engine + Calendar):
-- Cliente: ${formJson.cliente}
-- Intención: ${formJson.intencion_detectada}
-- Servicio: ${formJson.servicio_solicitado}
-- Día solicitado: ${formJson.dia_solicitado} (${formJson.fecha_calculada})
-- Hora solicitada: ${formJson.hora_solicitada}
-- Estado del horario solicitado: ${isTargetSlotAvailable === null ? 'Pendiente de elegir hora' : isTargetSlotAvailable ? '✅ DISPONIBLE' : '❌ OCUPADO / LLENO'}
-- Disponibilidad real en calendario:
+- Cliente (X): ${formJson.cliente || 'Falta coordinar (aún no proporcionado)'}
+- Tratamiento (M): ${formJson.servicio ? `${formJson.servicio} (${formJson.duracion_minutos} min)` : 'Falta coordinar'}
+- Día y Mes (Y de Z): ${formJson.dia_numero && formJson.mes_nombre ? `${formJson.dia_numero} de ${formJson.mes_nombre} (${formJson.dia_nombre})` : 'Falta coordinar día'}
+- Horario en formato 12 horas am/pm (A a B): ${formJson.hora_inicio_12 && formJson.hora_fin_12 ? `${formJson.hora_inicio_12} a ${formJson.hora_fin_12}` : 'Falta coordinar hora'}
+- Estado: ${isComplete ? '🎉 100% COMPLETO Y LISTO PARA CONFIRMAR' : `Falta coordinar: ${missingFields.join(', ')}`}
+- Disponibilidad en calendario:
 ${availabilitySummary}
-${alternativeSlots ? `- Horarios alternativos recomendados para ofrecer: ${alternativeSlots}` : ''}
+${alternativeSlots ? `- Horarios alternativos recomendados en formato am/pm: ${alternativeSlots}` : ''}
 `.trim();
 
     return { formJson, formSummaryText, extracted };

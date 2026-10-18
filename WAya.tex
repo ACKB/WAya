@@ -1,0 +1,718 @@
+\documentclass[12pt,a4paper]{report}
+
+% ==============================================================================
+% PAQUETES Y CONFIGURACIÓN GENERAL
+% ==============================================================================
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish,es-tabla,es-nodecimaldot]{babel}
+\usepackage{lmodern}
+\usepackage{geometry}
+\geometry{
+    top=2.5cm,
+    bottom=2.5cm,
+    left=2.5cm,
+    right=2.5cm,
+    headheight=15pt
+}
+
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{multirow}
+\usepackage{enumitem}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage{xcolor}
+\usepackage{colortbl}
+\usepackage{pdflscape}
+\usepackage{listings}
+\usepackage{tcolorbox}
+\tcbuselibrary{skins,breakable}
+\usepackage{tikz}
+\usetikzlibrary{shapes.geometric, arrows.meta, positioning, shadows, trees}
+\usepackage{hyperref}
+
+% ==============================================================================
+% PALETA DE COLORES CORPORATIVOS Y ANALÍTICOS
+% ==============================================================================
+\definecolor{BrandPrimary}{HTML}{0D47A1}    % Azul zafiro analítico
+\definecolor{BrandSecondary}{HTML}{00897B}  % Verde esmeralda tecnológico
+\definecolor{BrandDark}{HTML}{1A237E}       % Azul medianoche
+\definecolor{BrandAccent}{HTML}{25D366}     % Verde WhatsApp Oficial
+\definecolor{BrandYape}{HTML}{7A1FA2}       % Morado identificador Yape
+\definecolor{SurfaceLight}{HTML}{F8FAFC}    % Gris claro fondo
+\definecolor{BorderGray}{HTML}{CFD8DC}      % Gris sutil para bordes
+\definecolor{TextDark}{HTML}{212121}        % Texto principal
+\definecolor{CodeBg}{HTML}{F1F5F9}          % Fondo de código
+
+% ==============================================================================
+% CONFIGURACIÓN DE LISTINGS (CÓDIGO JSON Y SQL)
+% ==============================================================================
+\lstset{
+    backgroundcolor=\color{CodeBg},
+    basicstyle=\ttfamily\footnotesize\color{TextDark},
+    breaklines=true,
+    breakatwhitespace=true,
+    frame=single,
+    rulecolor=\color{BorderGray},
+    numbers=none,
+    keywordstyle=\color{BrandPrimary}\bfseries,
+    stringstyle=\color{BrandSecondary},
+    commentstyle=\color{gray}\itshape,
+    showstringspaces=false,
+    tabsize=2
+}
+
+% ==============================================================================
+% CONFIGURACIÓN DE HIPERVÍNCULOS
+% ==============================================================================
+\hypersetup{
+    colorlinks=true,
+    linkcolor=BrandPrimary,
+    citecolor=BrandSecondary,
+    urlcolor=BrandPrimary,
+    pdfauthor={Proyecto WAya - Gestión y Análisis de Datos e Información},
+    pdftitle={WAya: Gestión, Extracción y Análisis de Datos Conversacionales para Citas},
+    pdfsubject={Gestión y Análisis de Datos e Información - Proyecto de Aplicación Práctica},
+    pdfkeywords={Gestión de Datos, Análisis de Información, WhatsApp Analytics, SQLite, LLM, Slot Filling, Business Intelligence, Perú, Ley 29733}
+}
+
+% ==============================================================================
+% ESTILO DE TÍTULOS Y CABECERAS
+% ==============================================================================
+\titleformat{\chapter}[display]
+  {\normalfont\bfseries\color{BrandPrimary}}
+  {\filleft\small\textsf{CAPÍTULO \thechapter}}
+  {1ex}
+  {\titlerule\vspace{1.5ex}\LARGE\filright}
+  [\vspace{1ex}\titlerule]
+
+\titleformat{\section}
+  {\normalfont\Large\bfseries\color{BrandDark}}
+  {\thesection}{1em}{}
+
+\titleformat{\subsection}
+  {\normalfont\large\bfseries\color{BrandSecondary}}
+  {\thesubsection}{1em}{}
+
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\textsf{\color{gray}WAya | Gestión y Análisis de Datos e Información}}
+\fancyhead[R]{\small\textsf{\color{gray}\nouppercase{\leftmark}}}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\footrulewidth}{0.4pt}
+
+% ==============================================================================
+% CAJAS DESTACADAS Y ENTORNOS PERSONALIZADOS
+% ==============================================================================
+\newtcolorbox{kpicard}[2][]{
+    enhanced,
+    colback=SurfaceLight,
+    colframe=BrandPrimary,
+    fonttitle=\bfseries\sffamily\color{white},
+    coltitle=white,
+    colbacktitle=BrandPrimary,
+    title=#2,
+    arc=3mm,
+    boxrule=0.8pt,
+    drop shadow=black!10!white,
+    before skip=10pt,
+    after skip=10pt,
+    #1
+}
+
+\newtcolorbox{dialogbox}[2][]{
+    enhanced,
+    colback=white,
+    colframe=BrandAccent,
+    fonttitle=\bfseries\sffamily\color{black},
+    coltitle=black,
+    colbacktitle=BrandAccent!25!white,
+    title=#2,
+    arc=3mm,
+    boxrule=1pt,
+    before skip=8pt,
+    after skip=8pt,
+    #1
+}
+
+% ==============================================================================
+% INICIO DEL DOCUMENTO
+% ==============================================================================
+\begin{document}
+
+% ------------------------------------------------------------------------------
+% PORTADA ACADÉMICA Y TÉCNICA
+% ------------------------------------------------------------------------------
+\begin{titlepage}
+    \centering
+    \vspace*{0.5cm}
+    
+    {\Large \textbf{\textsf{CURSO: GESTIÓN Y ANÁLISIS DE DATOS E INFORMACIÓN}}}\\[0.3cm]
+    {\large \textsf{PROYECTO INTEGRADOR DE APLICACIÓN PROFESIONAL}}\\[1.0cm]
+    
+    \rule{\textwidth}{1.5pt}\\[0.4cm]
+    {\Huge \bfseries \color{BrandPrimary} PROYECTO WAYA}\\[0.3cm]
+    {\Large \textbf{Sistema Inteligente de Gestión, Extracción y Analítica de Datos Conversacionales para la Automatización de Reservas vía WhatsApp}}\\[0.2cm]
+    \rule{\textwidth}{1.5pt}\\[1.0cm]
+    
+    \begin{tcolorbox}[enhanced, colback=SurfaceLight, colframe=BrandPrimary, arc=4mm, width=0.96\textwidth, boxrule=1.2pt]
+        \centering
+        \vspace{0.2cm}
+        {\large \bfseries MEMORIA TÉCNICA Y MODELO ESTRATÉGICO DE DATOS}\\[0.2cm]
+        {\small \textbf{Entregable 1:} Ficha Técnica de Caracterización y Visión Tecnológica de Datos\\
+        \textbf{Entregable 2:} Lienzo Business Model Canvas de Datos (9 Bloques en Formato Apaisado)\\
+        \textbf{Módulos de Especialidad:} Pipeline ETL en Tiempo Real, Normalización Relacional 3FN, Llenado Paramétrico de Ranuras (Slot-Filling), Detección de Horas Valle y Gobernanza de Datos (Ley N° 29733)}\\[0.2cm]
+    \end{tcolorbox}
+    
+    \vfill
+    
+    \begin{minipage}{0.92\textwidth}
+        \begin{flushleft} \normalsize
+            \textbf{Asignatura:} Gestión y Análisis de Datos e Información\\
+            \textbf{Solución Tecnológica:} WAya (WhatsApp Analytics \& Laya Orchestration System)\\
+            \textbf{Arquitectura de Procesamiento:} Micro-Streaming ETL (Baileys $\rightarrow$ Laya Engine $\rightarrow$ Edge LLM $\rightarrow$ SQLite)\\
+            \textbf{Entorno de Despliegue:} Inferencia Local On-Premise con Aceleración GPU (NVIDIA RTX 5070 Ti / CUDA)\\
+            \textbf{Sector de Aplicación:} Consultorios Odontológicos, Spas y Salones de Estética en Lima Metropolitana\\
+            \textbf{Fecha de Presentación:} Octubre de 2026
+        \end{flushleft}
+    \end{minipage}
+    
+    \vfill
+    \noindent\rule{\textwidth}{0.8pt}\\[0.2cm]
+    {\small \textsf{Enfoque: Gestión del Ciclo de Vida del Dato, Calidad de Información, Business Intelligence y Soberanía Local}}
+\end{titlepage}
+
+% ------------------------------------------------------------------------------
+% ÍNDICES
+% ------------------------------------------------------------------------------
+\tableofcontents
+\newpage
+\listoftables
+\newpage
+\listoffigures
+\newpage
+
+% ------------------------------------------------------------------------------
+% CAPÍTULO 1: FICHA DE CARACTERIZACIÓN (ENTREGABLE 1)
+% ------------------------------------------------------------------------------
+\chapter{Ficha Técnica de Caracterización del Negocio de Datos (Entregable 1)}
+
+El presente capítulo formaliza la ficha técnica requerida en el curso de \textbf{Gestión y Análisis de Datos e Información}, evaluando la problemática de la micro y pequeña empresa de servicios desde la perspectiva del flujo, persistencia, calidad y valor estratégico de los datos.
+
+\section{Ficha Técnica de Evaluación del Proyecto de Datos}
+
+\begin{table}[h!]
+\centering
+\scriptsize
+\begin{tabularx}{\textwidth}{|p{3.2cm}|p{3.6cm}|X|}
+\hline
+\rowcolor{BrandPrimary!25}
+\textbf{Campo a Evaluar} & \textbf{Requerimiento Académico} & \textbf{Evidencia y Formulación del Proyecto WAya} \\
+\hline
+\textbf{Nombre del negocio y solución de datos} & 
+Indicar denominación del proyecto y la naturaleza de la solución informacional. & 
+\textbf{WAya Technologies S.A.C.} \newline
+\textit{(Nombre comercial: WAya - Asistente y Analítica Conversacional de Reservas)}. \newline
+Plataforma de captura, normalización y análisis de flujos conversacionales no estructurados para la gestión integral de citas. \\
+\hline
+\textbf{Característica actual de la gestión de información} & 
+Describir el estado del arte operativo en el manejo de datos: cómo se capturan, procesan y almacenan hoy los datos de clientes y turnos, y cuáles son sus vulnerabilidades. & 
+\textbf{Diagnóstico del Flujo de Datos en el Sector:} \newline
+La mayoría de establecimientos de salud y estética en el Perú operan con WhatsApp como canal principal, pero bajo un manejo 100\% manual y no estructurado. \newline
+\textbf{Principales Brechas de Información:}
+\begin{itemize}[leftmargin=1.0em, topsep=1pt, itemsep=1pt]
+    \item \textbf{Datos No Estructurados y Volátiles:} Los nombres de pacientes, tratamientos y horarios solicitados quedan aislados en chats individuales sin persistencia en base de datos.
+    \item \textbf{Latencia Elevada de Respuesta:} Demoras manuales de 30 a 60 minutos originan la pérdida de hasta el 35\% de prospectos que abandonan la consulta.
+    \item \textbf{Anomalías de Concurrencia y Solapamiento:} La falta de sincronización atómica entre recepción y especialistas causa frecuentes dobles reservas y tiempos insuficientes de atención.
+    \item \textbf{Inexistencia de Inteligencia Histórica:} Cero registro estructurado de ausencias (\textit{no-shows}), demanda horaria ni valor de vida del cliente (\textit{LTV}).
+\end{itemize} \\
+\hline
+\textbf{Propuesta de valor orientada a datos} & 
+Detallar cómo la solución captura, limpia, transforma y monetiza los datos para generar valor al negocio. & 
+\textbf{Factor Diferenciador del Pipeline WAya:} \newline
+WAya convierte texto conversacional libre en registros relacionales estructurados en tiempo real:
+\begin{itemize}[leftmargin=1.0em, topsep=1pt, itemsep=1pt]
+    \item \textbf{Ingesta y Extracción Estructurada (< 5s):} El motor Laya coordina la extracción paramétrica de las 6 variables obligatorias de reserva: $X$ (Cliente), $Y$ (Día), $Z$ (Mes), $A$ (Hora inicio), $B$ (Hora fin calculada) y $M$ (Servicio).
+    \item \textbf{Normalización Determinista y Reloj Peruano:} Cálculo exacto de duración por catálogo y conversión rigurosa a formato peruano de 12 horas (\textit{am/pm}).
+    \item \textbf{Mitigación del Ausentismo (< 6\%):} Trazabilidad de recordatorios preventivos y validación de señas por billeteras digitales (Yape / Plin).
+    \item \textbf{Soberanía y Privacidad On-Premise:} Procesamiento local mediante Edge LLM que evita la transferencia de datos confidenciales a la nube.
+\end{itemize} \\
+\hline
+\textbf{Visión analítica y escalabilidad tecnológica} & 
+Proyectar la evolución del ecosistema de datos: analítica descriptiva, predictiva y escalabilidad de la arquitectura. & 
+\textbf{Transformación Hacia una Empresa Basada en Datos (Data-Driven):}
+\begin{itemize}[leftmargin=1.0em, topsep=1pt, itemsep=1pt]
+    \item \textbf{Analítica Predictiva de Horas Valle:} Detección probabilística de franjas horarias con baja ocupación para activar promociones inteligentes.
+    \item \textbf{Almacén Centralizado de Datos (Data Warehouse):} Consolidación multisede en esquema dimensional para evaluar el rendimiento por servicio y especialista.
+    \item \textbf{Eficiencia de Costos Marginales:} Inferencia local acelerada por hardware dedicado, suprimiendo gastos crecientes en APIs comerciales.
+\end{itemize} \\
+\hline
+\end{tabularx}
+\caption{Ficha técnica de caracterización del proyecto WAya en el ámbito de datos e información.}
+\label{tab:ficha_evaluacion_datos}
+\end{table}
+
+% ------------------------------------------------------------------------------
+% CAPÍTULO 2: MODELO CANVAS DE DATOS (ENTREGABLE 2)
+% ------------------------------------------------------------------------------
+\chapter{Lienzo Business Model Canvas de Datos (Entregable 2)}
+
+En el contexto de la gestión de información, el modelo de negocio articula tanto las relaciones transaccionales como los activos informacionales, el flujo de valor de los datos y los mecanismos de monetización analítica.
+
+\section{Lienzo Canvas Completo de 9 Bloques}
+
+Para garantizar una lectura exhaustiva y sin distorsiones de los 9 bloques del Canvas, a continuación se presenta la matriz en formato horizontal apaisado:
+
+\begin{landscape}
+\begin{table}[p]
+\centering
+\scriptsize
+\begin{tabularx}{1.38\textwidth}{|X|X|X|X|X|}
+\hline
+\rowcolor{BrandPrimary!25}
+\textbf{1. Socios Clave} & \textbf{2. Actividades Clave} & \textbf{3. Propuesta de Valor} & \textbf{4. Relación con Clientes} & \textbf{5. Segmentos de Clientes} \\
+\hline
+\begin{itemize}[leftmargin=0.7em, topsep=1pt, itemsep=1pt]
+    \item \textbf{Meta / Baileys Gateway:} Acceso al socket de mensajería instantánea sin costo por mensaje transaccional.
+    \item \textbf{Billeteras Digitales (Yape/Plin):} Socios para el depósito y validación de seña preventiva.
+    \item \textbf{Comunidad Open Source AI:} Modelos cuantizados compactos (Llama 3.2 3B Q4\_K\_M).
+    \item \textbf{Google Cloud:} Integración con la API de Google Calendar.
+    \item \textbf{Consultorios y Salones Piloto:} Laboratorios vivos para calibración de prompts en habla local.
+\end{itemize}
+&
+\begin{itemize}[leftmargin=0.7em, topsep=1pt, itemsep=1pt]
+    \item Ingesta y sanitización de flujos de texto continuo en WhatsApp.
+    \item Orquestación de slot-filling mediante el motor determinista Laya.
+    \item Normalización de fechas y validación de reloj 12 horas (\textit{am/pm}).
+    \item Persistencia relacional en SQLite y gestión de respaldos.
+    \item Generación de tableros analíticos de horas valle y demanda.
+\end{itemize}
+&
+\begin{itemize}[leftmargin=0.7em, topsep=1pt, itemsep=1pt]
+    \item \textbf{Estructuración Inmediata (< 5s):} Convierte el chat informal en registros SQL limpios y consistentes.
+    \item \textbf{Disponibilidad 24/7 sin Solapamientos:} Validación matemática de tiempos de procedimiento y desinfección.
+    \item \textbf{Erradicación del No-Show (< 6\%):} Trazabilidad de recordatorios preventivos y confirmación con seña Yape.
+    \item \textbf{Rescate de Horas Valle:} Analítica predictiva para dinamizar horarios de baja afluencia.
+    \item \textbf{Precios en Soles:} Retorno de inversión recuperando solo 2 citas perdidas al mes.
+\end{itemize}
+&
+\begin{itemize}[leftmargin=0.7em, topsep=1pt, itemsep=1pt]
+    \item Asistencia técnica directa y consultoría en optimización de agenda.
+    \item Informes mensuales automatizados con métricas de ocupación e ingresos generados.
+    \item Transparencia total en el tratamiento y privacidad de datos de pacientes.
+    \item Canal prioritario de soporte continuo vía WhatsApp.
+\end{itemize}
+&
+\begin{itemize}[leftmargin=0.7em, topsep=1pt, itemsep=1pt]
+    \item \textbf{Nicho Primario (Salud):} Consultorios odontológicos independientes y policlínicos (1 a 4 sillones) en Lima Metropolitana.
+    \item \textbf{Nicho Secundario (Estética):} Salones de belleza, barberías y centros de spa con alta rotación de turnos.
+    \item \textbf{Nicho de Expansión:} Consultorios de nutrición, psicología y fisioterapia.
+\end{itemize}
+\\
+\hline
+\rowcolor{BrandSecondary!25}
+\multicolumn{2}{|l|}{\textbf{6. Recursos Clave (Activos de Información y Tecnología)}} & \multicolumn{1}{c|}{\cellcolor{white}} & \multicolumn{2}{l|}{\textbf{7. Canales de Distribución y Flujo de Datos}} \\
+\cline{1-2}\cline{4-5}
+\multicolumn{2}{|p{0.52\textwidth}|}{
+\begin{itemize}[leftmargin=0.7em, topsep=1pt, itemsep=1pt]
+    \item \textbf{Activos de Datos:} Base relacional normalizada de turnos, matriz de demanda horaria y taxonomía de servicios.
+    \item \textbf{Motor Laya:} Motor híbrido de reglas deterministas y despacho de prompts enriquecidos en formato JSON estricto.
+    \item \textbf{Infraestructura Edge AI:} Servidor local con aceleración GPU (NVIDIA CUDA) para inferencia on-premise de bajo consumo y costo predecible.
+    \item \textbf{Equipo Multidisciplinario:} Arquitecto de datos, ingeniero de software e integrador comercial.
+\end{itemize}
+}
+& \multicolumn{1}{c|}{\cellcolor{white}}
+& \multicolumn{2}{p{0.52\textwidth}|}{
+\begin{itemize}[leftmargin=0.7em, topsep=1pt, itemsep=1pt]
+    \item \textbf{WhatsApp Conversacional:} Canal directo de interacción y captura de datos transaccionales.
+    \item \textbf{Google Calendar Sync:} Canal de consulta en tiempo real para especialistas y doctores.
+    \item \textbf{Dashboard Analítico Web:} Visualización de métricas e indicadores de rendimiento para administradores.
+    \item \textbf{Demostraciones Interactivas en Campo:} Pruebas en vivo en el celular de los dueños de negocio en Lima.
+\end{itemize}
+}
+\\
+\hline
+\rowcolor{BrandDark!20}
+\multicolumn{2}{|l|}{\textbf{8. Estructura de Costes de la Arquitectura de Datos}} & \multicolumn{3}{l|}{\textbf{9. Fuentes de Ingresos y Monetización del Dato}} \\
+\hline
+\multicolumn{2}{|p{0.52\textwidth}|}{
+\begin{itemize}[leftmargin=0.7em, topsep=1pt, itemsep=1pt]
+    \item Infraestructura Edge / VPS dedicado y almacenamiento seguro (S/. 120/mes).
+    \item Costo operativo de inferencia local amortizado (energía y depreciación de hardware: S/. 80/mes).
+    \item Servicios de dominio, certificados SSL y monitoreo de uptime (S/. 90/mes).
+    \item Asesoría legal y contable en cumplimiento de la Ley N° 29733 (S/. 250/mes).
+    \item Mantenimiento preventivo y evolución de pipelines de datos (S/. 300/mes).
+    \item \textbf{Costo operativo mensual consolidado: S/. 840 / mes.}
+\end{itemize}
+}
+& \multicolumn{3}{p{0.80\textwidth}|}{
+\begin{itemize}[leftmargin=0.7em, topsep=1pt, itemsep=1pt]
+    \item \textbf{Suscripción Mensual SaaS B2B en Soles:}
+        \begin{itemize}[leftmargin=0.7em]
+            \item \textbf{Plan Smart Data (S/. 119/mes):} Hasta 250 citas/mes, normalización automática y reportes descriptivos básicos.
+            \item \textbf{Plan Predictive Analytics (S/. 249/mes):} Citas ilimitadas, detección proactiva de horas valle, recordatorios automáticos y validación de señas por Yape/Plin.
+        \end{itemize}
+    \item \textbf{Cuota de Configuración Inicial (Opcional):} S/. 100 por normalización y carga completa de catálogo de servicios y restricciones.
+    \item \textbf{Retorno de Inversión Inmediato:} Una sola endodoncia o procedimiento dental recuperado (S/. 180 - S/. 250) amortiza la mensualidad completa.
+\end{itemize}
+}
+\\
+\hline
+\end{tabularx}
+\caption{Lienzo Business Model Canvas de Datos (Entregable 2) para WAya Technologies.}
+\label{tab:canvas_horizontal}
+\end{table}
+\end{landscape}
+
+% ------------------------------------------------------------------------------
+% CAPÍTULO 3: CICLO DE VIDA DEL DATO Y ARQUITECTURA PIPELINE
+% ------------------------------------------------------------------------------
+\chapter{Ciclo de Vida del Dato y Arquitectura del Pipeline ETL}
+
+\section{Gestión del Ciclo de Vida del Dato (Data Lifecycle Management)}
+En los sistemas de información modernos, los datos atraviesan un ciclo continuo que abarca desde la captura bruta hasta la generación de valor analítico. En WAya, este ciclo se descompone en 5 fases estandarizadas:
+
+\begin{figure}[h!]
+\centering
+\begin{tikzpicture}[
+    node distance=1.3cm,
+    block/.style={rectangle, draw=BrandPrimary, fill=SurfaceLight, thick, text width=2.6cm, align=center, rounded corners=2mm, minimum height=1.4cm, font=\small\sffamily},
+    arrow/.style={-{Stealth[scale=1.2]}, thick, color=BrandPrimary}
+]
+    \node[block] (ingesta) {\textbf{1. Ingesta}\\Flujo continuo JSON semiestructurado};
+    \node[block, right=of ingesta] (extraccion) {\textbf{2. Extracción}\\Laya + Edge LLM (Slot Filling)};
+    \node[block, right=of extraccion] (validacion) {\textbf{3. Validación}\\Reglas 12h am/pm y catálogo};
+    \node[block, below=of validacion] (persistencia) {\textbf{4. Persistencia}\\SQLite Relacional + Drafts};
+    \node[block, left=of persistencia] (analitica) {\textbf{5. Analítica}\\BI, Horas Valle y Google Cal Sync};
+
+    \draw[arrow] (ingesta) -- (extraccion);
+    \draw[arrow] (extraccion) -- (validacion);
+    \draw[arrow] (validacion) -- (persistencia);
+    \draw[arrow] (persistencia) -- (analitica);
+    \draw[arrow] (analitica) -| (ingesta);
+\end{tikzpicture}
+\caption{Ciclo de Vida del Dato en la plataforma WAya.}
+\label{fig:ciclo_datos}
+\end{figure}
+
+\begin{enumerate}[leftmargin=1.5em]
+    \item \textbf{Ingesta de Datos (Data Ingestion):} Captura asíncrona de eventos de chat provenientes de WhatsApp a través del gateway de Baileys. Los datos ingresan como objetos JSON con campos como \texttt{remoteJid}, \texttt{messageTimestamp} y el contenido textual crudo.
+    \item \textbf{Extracción Estructurada de Información (Information Extraction):} El motor determinista Laya examina el mensaje y envía un esquema JSON compacto al modelo de lenguaje local (\textit{Llama 3.2 3B}), evitando historiales sobrecargados que inducen alucinaciones en modelos compactos.
+    \item \textbf{Normalización y Calidad del Dato (Data Cleansing \& Standardization):} Los valores extraídos se someten a reglas estrictas en TypeScript: conversión de horas al reloj peruano de 12 horas con indicador (\textit{am/pm}), cálculo de la hora de fin según la duración definida en el catálogo de servicios y validación de disponibilidad sin solapamientos.
+    \item \textbf{Persistencia Relacional Transaccional (Data Storage):} Si faltan campos, se actualiza la tabla de borradores (\texttt{appointment\_drafts}); cuando se completan todos los campos requeridos ($X, Y, Z, A, B, M$), se confirma la cita en la tabla relacional \texttt{appointments}.
+    \item \textbf{Consumo y Analítica de Negocio (Data Consumption \& Analytics):} Sincronización bidireccional con Google Calendar API y actualización de las vistas analíticas para el cálculo de KPIs de ocupación y detección de horas valle.
+\end{enumerate}
+
+\section{Arquitectura del Pipeline Micro-Streaming ETL}
+A diferencia de los almacenes de datos tradicionales que ejecutan transformaciones por lotes (\textit{batch}) durante la noche, WAya implementa un pipeline tipo \textbf{Micro-Streaming ETL en Tiempo Real} con una latencia de extremo a extremo inferior a 5 segundos:
+
+\begin{itemize}[leftmargin=1.5em]
+    \item \textbf{Extract (Extracción):} Desempaquetado del mensaje entrante en formato JSON semiestructurado desde el socket de WhatsApp.
+    \item \textbf{Transform (Transformación mediante Slot-Filling):} Extracción guiada de entidades y validación de las 6 variables esenciales:
+    \begin{align*}
+        X &: \text{Nombre del paciente (ej. Yolanda)} \\
+        Y &: \text{Día de la cita (ej. 22)} \\
+        Z &: \text{Mes de la cita (ej. Noviembre)} \\
+        A &: \text{Hora de inicio en formato 12 horas (ej. 10:00 am)} \\
+        B &: \text{Hora calculada de término (ej. 11:30 am)} \\
+        M &: \text{Procedimiento o servicio solicitado (ej. Corte y tinte)}
+    \end{align*}
+    \item \textbf{Load (Carga y Confirmación Estructurada):} Inserción atómica en base de datos relacional y emisión de la respuesta formal estandarizada:
+    \begin{quote}
+        \textit{<<Entonces señor o señora X, quedamos para el día Y de Z de A a B para M. ¡Le esperamos con mucho gusto!>>}
+    \end{quote}
+\end{itemize}
+
+\subsection{Esquema de Payload JSON Intercambiado}
+Para garantizar la fiabilidad del modelo compacto Llama 3.2 3B, el motor Laya intercambia cargas de datos ligeras y libres de ambigüedad en lugar de historiales conversacionales pesados:
+
+\begin{lstlisting}[language=Java, caption={Estructura de Payload JSON utilizado para el llenado de slots en Laya.}]
+{
+  "clientName": "Yolanda",
+  "day": 22,
+  "month": "Noviembre",
+  "startTime": "10:00 am",
+  "endTime": "11:30 am",
+  "serviceName": "Corte y tinte",
+  "missingSlots": [],
+  "isComplete": true
+}
+\end{lstlisting}
+
+% ------------------------------------------------------------------------------
+% CAPÍTULO 4: MODELADO DE DATOS Y GESTIÓN DE LA CALIDAD
+% ------------------------------------------------------------------------------
+\chapter{Modelado de Datos y Gestión de la Calidad}
+
+\section{Modelo Entidad-Relación (MER)}
+Para respaldar la consistencia transaccional y analítica, la estructura de base de datos relacional de WAya ha sido normalizada en Tercera Forma Normal (3FN), desacoplando usuarios, servicios, citas y borradores de sesión.
+
+\begin{figure}[h!]
+\centering
+\begin{tikzpicture}[
+    node distance=2.2cm,
+    entity/.style={rectangle, draw=BrandDark, fill=BrandPrimary!10, thick, text width=3.2cm, align=center, rounded corners=1mm, minimum height=1.8cm, font=\small\sffamily},
+    rel/.style={diamond, draw=BrandSecondary, fill=BrandSecondary!15, thick, text width=1.8cm, align=center, inner sep=0pt, font=\scriptsize\sffamily},
+    link/.style={thick, color=BrandDark}
+]
+    \node[entity] (user) {\textbf{USERS}\\ \hrule \vspace{2pt} \scriptsize \underline{id (PK)}\\ phone\_number\\ full\_name\\ created\_at};
+    \node[rel, right=of user] (rel_reserva) {Genera\\(1:N)};
+    \node[entity, right=of rel_reserva] (appointment) {\textbf{APPOINTMENTS}\\ \hrule \vspace{2pt} \scriptsize \underline{id (PK)}\\ \textit{user\_id (FK)}\\ \textit{service\_id (FK)}\\ start\_time\\ end\_time\\ status};
+    \node[entity, below=of user] (draft) {\textbf{APPT\_DRAFTS}\\ \hrule \vspace{2pt} \scriptsize \underline{phone (PK)}\\ client\_name\\ date\_text\\ time\_text\\ service\_name\\ updated\_at};
+    \node[entity, below=of appointment] (service) {\textbf{SERVICES}\\ \hrule \vspace{2pt} \scriptsize \underline{id (PK)}\\ name\\ duration\_minutes\\ price\\ is\_active};
+
+    \draw[link] (user) -- (rel_reserva);
+    \draw[link] (rel_reserva) -- (appointment);
+    \draw[link] (user) -- node[left, font=\scriptsize] {1:1} (draft);
+    \draw[link] (service) -- node[right, font=\scriptsize] {1:N} (appointment);
+\end{tikzpicture}
+\caption{Diagrama Entidad-Relación formal del sistema WAya.}
+\label{fig:mer_detallado}
+\end{figure}
+
+\section{Diccionario de Datos del Sistema}
+
+\subsection{Tabla: \texttt{users} (Pacientes y Clientes)}
+Almacena el registro maestro de identidades de los clientes que interactúan a través de WhatsApp.
+\begin{table}[h!]
+\centering
+\small
+\begin{tabularx}{\textwidth}{|p{2.6cm}|p{2.9cm}|p{2.4cm}|X|}
+\hline
+\rowcolor{BrandPrimary!20}
+\textbf{Atributo} & \textbf{Tipo de Dato} & \textbf{Restricción} & \textbf{Descripción y Regla de Negocio} \\
+\hline
+\texttt{id} & INTEGER & PK, NOT NULL & Clave primaria numérica autoincremental. \\
+\hline
+\texttt{phone\_number} & VARCHAR(25) & UNIQUE, NOT NULL & Identificador E.164 del contacto (ej. 51987654321). \\
+\hline
+\texttt{full\_name} & VARCHAR(120) & NULL & Nombre detectado o confirmado por el cliente ($X$). \\
+\hline
+\texttt{created\_at} & DATETIME & NOT NULL & Fecha y hora de creación del registro. \\
+\hline
+\end{tabularx}
+\caption{Diccionario de datos: Tabla \texttt{users}.}
+\label{tab:dic_users}
+\end{table}
+
+\subsection{Tabla: \texttt{services} (Catálogo de Procedimientos)}
+Contiene los servicios ofrecidos junto con su duración estándar y tarifa de referencia.
+\begin{table}[h!]
+\centering
+\small
+\begin{tabularx}{\textwidth}{|p{2.8cm}|p{2.9cm}|p{2.4cm}|X|}
+\hline
+\rowcolor{BrandPrimary!20}
+\textbf{Atributo} & \textbf{Tipo de Dato} & \textbf{Restricción} & \textbf{Descripción y Regla de Negocio} \\
+\hline
+\texttt{id} & INTEGER & PK, NOT NULL & Clave primaria del procedimiento. \\
+\hline
+\texttt{name} & VARCHAR(100) & NOT NULL & Denominación del servicio ($M$). \\
+\hline
+\texttt{duration\_min} & INTEGER & NOT NULL & Minutos requeridos para el procedimiento ($\Delta t$). \\
+\hline
+\texttt{price} & DECIMAL(10,2)& NOT NULL & Tarifa en Nuevos Soles (S/.). \\
+\hline
+\texttt{is\_active} & BOOLEAN & NOT NULL & Flag de disponibilidad comercial activa. \\
+\hline
+\end{tabularx}
+\caption{Diccionario de datos: Tabla \texttt{services}.}
+\label{tab:dic_services}
+\end{table}
+
+\subsection{Tabla: \texttt{appointments} (Citas Confirmadas)}
+Registra las transacciones validadas, listas para sincronización de calendario y envío de recordatorios.
+\begin{table}[h!]
+\centering
+\small
+\begin{tabularx}{\textwidth}{|p{2.6cm}|p{2.9cm}|p{2.4cm}|X|}
+\hline
+\rowcolor{BrandPrimary!20}
+\textbf{Atributo} & \textbf{Tipo de Dato} & \textbf{Restricción} & \textbf{Descripción y Regla de Negocio} \\
+\hline
+\texttt{id} & INTEGER & PK, NOT NULL & Identificador unívoco del turno agendado. \\
+\hline
+\texttt{user\_id} & INTEGER & FK, NOT NULL & Llave foránea hacia \texttt{users.id}. \\
+\hline
+\texttt{service\_id} & INTEGER & FK, NOT NULL & Llave foránea hacia \texttt{services.id}. \\
+\hline
+\texttt{start\_time} & DATETIME & NOT NULL & Fecha y hora de inicio de la cita ($A$). \\
+\hline
+\texttt{end\_time} & DATETIME & NOT NULL & Fecha y hora de fin calculada ($B = A + \Delta t$). \\
+\hline
+\texttt{status} & VARCHAR(20) & NOT NULL & Estados válidos: \texttt{CONFIRMED}, \texttt{CANCELLED}, \texttt{DONE}. \\
+\hline
+\texttt{calendar\_id}& VARCHAR(100) & NULL & Identificador de evento en Google Calendar API. \\
+\hline
+\end{tabularx}
+\caption{Diccionario de datos: Tabla \texttt{appointments}.}
+\label{tab:dic_appointments}
+\end{table}
+
+\subsection{Tabla: \texttt{appointment\_drafts} (Persistencia de Ranuras en Sesión)}
+Mantiene el estado transaccional temporal durante el proceso interactivo de slot filling.
+\begin{table}[h!]
+\centering
+\small
+\begin{tabularx}{\textwidth}{|p{2.6cm}|p{2.9cm}|p{2.4cm}|X|}
+\hline
+\rowcolor{BrandPrimary!20}
+\textbf{Atributo} & \textbf{Tipo de Dato} & \textbf{Restricción} & \textbf{Descripción y Regla de Negocio} \\
+\hline
+\texttt{phone} & VARCHAR(30) & PK, NOT NULL & Clave primaria asociada al número de WhatsApp. \\
+\hline
+\texttt{client\_name} & VARCHAR(100) & NULL & Nombre identificado ($X$). \\
+\hline
+\texttt{date\_text} & VARCHAR(50) & NULL & Día y mes solicitados ($Y$ de $Z$). \\
+\hline
+\texttt{time\_text} & VARCHAR(30) & NULL & Hora solicitada en reloj de 12 horas ($A$ am/pm). \\
+\hline
+\texttt{service\_name}& VARCHAR(100) & NULL & Procedimiento solicitado ($M$). \\
+\hline
+\texttt{updated\_at} & DATETIME & NOT NULL & Marca de tiempo para política de caducidad. \\
+\hline
+\end{tabularx}
+\caption{Diccionario de datos: Tabla \texttt{appointment\_drafts}.}
+\label{tab:dic_drafts}
+\end{table}
+
+\section{Control de Calidad del Dato (Data Quality Control)}
+Para garantizar la pureza analítica de la información, se aplican tres reglas deterministas automáticas:
+\begin{enumerate}[leftmargin=1.5em]
+    \item \textbf{Criterio de Completitud Paramétrica:} Ninguna cita pasa a estado \texttt{CONFIRMED} si la evaluación de slots no satisface la totalidad del vector:
+    \begin{equation}
+        \text{Completitud} = \frac{\sum_{i=1}^{6} \mathbb{I}(\text{slot}_i \neq \emptyset)}{6} = 1.0
+    \end{equation}
+    \item \textbf{Restricción Matemática de No Solapamiento:} Se valida que la franja temporal no colisione con citas previas en la misma agenda:
+    \begin{equation}
+        \forall c_k \in \text{CitasActivas}, \quad [A_{\text{nueva}}, B_{\text{nueva}}] \cap [A_k, B_k] = \emptyset
+    \end{equation}
+    \item \textbf{Normalización Cultural de Horarios:} Los horarios se almacenan internamente en formato UTC/ISO-8601 pero se presentan al cliente de forma amigable en reloj de 12 horas (\textit{am/pm}), eliminando la confusión que genera el formato de 24 horas en las MYPEs de servicios en el Perú.
+\end{enumerate}
+
+% ------------------------------------------------------------------------------
+% CAPÍTULO 5: ANÁLISIS DE DATOS Y BUSINESS INTELLIGENCE
+% ------------------------------------------------------------------------------
+\chapter{Análisis de Datos y Business Intelligence (BI)}
+
+\section{Niveles de Analítica en la Plataforma WAya}
+La gestión de información en WAya no se limita al registro operativo de transacciones, sino que habilita tres niveles progresivos de análisis para optimizar las decisiones del negocio:
+
+\begin{figure}[h!]
+\centering
+\begin{tikzpicture}[
+    level 1/.style={sibling distance=5.2cm, level distance=1.8cm},
+    level 2/.style={sibling distance=2.5cm, level distance=1.8cm},
+    every node/.style={rectangle, draw=BrandPrimary, fill=SurfaceLight, rounded corners=2mm, font=\small\sffamily, align=center, thick}
+]
+    \node[fill=BrandPrimary!20] {\textbf{Analítica de Datos WAya}}
+        child { node {\textbf{Descriptiva}\\¿Qué ocurrió?}
+            child { node[font=\scriptsize] {Tasa de\\Conversión} }
+            child { node[font=\scriptsize] {Ranking de\\Servicios} }
+        }
+        child { node {\textbf{Diagnóstica}\\¿Por qué ocurrió?}
+            child { node[font=\scriptsize] {Causas de\\No-Shows} }
+            child { node[font=\scriptsize] {Abandono de\\Diálogo} }
+        }
+        child { node {\textbf{Predictiva}\\¿Qué ocurrirá?}
+            child { node[font=\scriptsize] {Pronóstico de\\Horas Valle} }
+            child { node[font=\scriptsize] {Ocupación\\Proyectada} }
+        };
+\end{tikzpicture}
+\caption{Niveles de análisis de datos e inteligencia de negocios en WAya.}
+\label{fig:niveles_analitica}
+\end{figure}
+
+\section{Indicadores Clave de Desempeño (KPIs de Datos)}
+
+\begin{table}[h!]
+\centering
+\small
+\begin{tabularx}{\textwidth}{|p{3.5cm}|p{4.2cm}|X|}
+\hline
+\rowcolor{BrandPrimary!20}
+\textbf{Indicador (KPI)} & \textbf{Fórmula de Cálculo} & \textbf{Objetivo y Significado Estratégico} \\
+\hline
+\textbf{Tasa de Conversión Conversacional (TCC)} & 
+$\text{TCC} = \frac{\text{Citas Confirmadas}}{\text{Consultas Totales}} \times 100$ & 
+Meta: $> 65\%$. Cuantifica la eficiencia del motor conversacional para guiar al usuario hasta el cierre de la cita. \\
+\hline
+\textbf{Tasa de Ausentismo (No-Show Rate - NSR)} & 
+$\text{NSR} = \frac{\text{Citas No Asistidas}}{\text{Citas Confirmadas Totales}} \times 100$ & 
+Meta: $< 6\%$. Evalúa la efectividad de los recordatorios automáticos y el cobro de seña preventiva por Yape. \\
+\hline
+\textbf{Índice de Ocupación de Agenda (IOA)} & 
+$\text{IOA} = \frac{\sum \text{Minutos Agendados}}{\text{Minutos Hábiles Totales}} \times 100$ & 
+Meta: $> 80\%$. Mide la productividad horaria de sillones odontológicos o estaciones de estilistas. \\
+\hline
+\textbf{Latencia de Respuesta Local (LRL)} & 
+$\text{LRL} = \frac{\sum \text{Tiempo de Inferencia}}{\text{Mensajes Procesados}}$ & 
+Meta: $< 2.5\text{ s}$. Garantiza que el modelo local en GPU mantenga una interacción conversacional fluida. \\
+\hline
+\end{tabularx}
+\caption{Matriz de Indicadores Clave de Desempeño (KPIs) de Datos.}
+\label{tab:matriz_kpis}
+\end{table}
+
+\section{Modelo Analítico Predictivo de Horas Valle}
+En los salones de belleza y consultorios odontológicos de Lima Metropolitana se constata una marcada estacionalidad intradía e intrasemanal: alta concentración de demanda los viernes por la tarde y sábados, frente a una ocupación inferior al 25\% los martes y miércoles por la mañana.
+
+WAya incorpora un modelo de series temporales que calcula la probabilidad de vacancia para cada franja horaria $h$ del día de la semana $d$:
+\begin{equation}
+    P(\text{Vacancia}_{d, h}) = 1 - \frac{1}{N} \sum_{w=1}^{N} \mathbb{I}(\text{Ocupado}_{w, d, h})
+\end{equation}
+donde $N$ es la ventana móvil de semanas analizadas. Cuando $P(\text{Vacancia}_{d, h}) \ge 0.70$, el sistema marca el bloque como \textbf{Hora Valle Crítica} y habilita una regla de negocio prescriptiva: ofrecer de manera proactiva incentivos tarifarios (ej. 20\% de descuento en limpieza o peinado) a los clientes que solicitan citas en horarios flexibles, logrando nivelar la curva de ocupación y maximizar los ingresos del establecimiento.
+
+% ------------------------------------------------------------------------------
+% CAPÍTULO 6: GOBERNANZA, PRIVACIDAD Y SEGURIDAD
+% ------------------------------------------------------------------------------
+\chapter{Gobernanza, Privacidad y Seguridad de la Información}
+
+\section{Cumplimiento de la Ley de Protección de Datos Personales (Ley N° 29733)}
+El tratamiento de datos de salud y estética en el Perú está sujeto al marco normativo de la \textbf{Ley N° 29733}. WAya incorpora controles de gobernanza desde el diseño (\textit{Privacy by Design}):
+
+\begin{itemize}[leftmargin=1.5em]
+    \item \textbf{Principio de Finalidad:} Los datos de contacto y motivos de consulta se utilizan estrictamente para el agendamiento del turno y el envío de recordatorios.
+    \item \textbf{Principio de Proporcionalidad y Minimización:} El motor de slot filling recopila únicamente los 6 atributos requeridos para la reserva ($X, Y, Z, A, B, M$), sin solicitar información patrimonial ni antecedentes sensibles innecesarios.
+    \item \textbf{Principio de Seguridad y Confidencialidad:} La persistencia local en base de datos SQLite se encuentra protegida con permisos restringidos de sistema operativo y sin exposición de puertos hacia redes públicas.
+\end{itemize}
+
+\section{Soberanía de Datos mediante Inferencia Edge AI Local}
+A diferencia de los chatbots comerciales que transmiten el historial íntegro de las conversaciones hacia servidores en el extranjero (OpenAI, Google Cloud, Anthropic), WAya adopta una arquitectura de \textbf{Soberanía del Dato On-Premise}:
+
+\begin{kpicard}{Ventajas de la Arquitectura Edge AI en WAya}
+\textbf{Inferencia Local con Llama 3.2 3B y Aceleración GPU Dedicada:}
+\begin{itemize}[leftmargin=1.0em, topsep=2pt, itemsep=2pt]
+    \item \textbf{Cero Fuga de Información Confidencial:} Ningún nombre de paciente, número de teléfono ni procedimiento abandona la máquina local del negocio.
+    \item \textbf{Inmunidad ante Cortes de Conectividad Internacional:} La extracción y el agendamiento continúan funcionando de forma local.
+    \item \textbf{Costos Operativos Predecibles:} Desacopla la rentabilidad de las microempresas de las fluctuaciones de tarifas por consumo de tokens en la nube.
+\end{itemize}
+\end{kpicard}
+
+% ------------------------------------------------------------------------------
+% CAPÍTULO 7: CONCLUSIONES Y RECOMENDACIONES
+% ------------------------------------------------------------------------------
+\chapter{Conclusiones y Recomendaciones}
+
+\section{Conclusiones del Proyecto}
+\begin{enumerate}[leftmargin=1.5em]
+    \item El proyecto \textbf{WAya} materializa de forma rigurosa los fundamentos del curso de \textbf{Gestión y Análisis de Datos e Información}, articulando el ciclo de vida del dato, el modelado relacional en 3FN, la calidad de información y la analítica predictiva en una solución de impacto real para las MYPEs de servicios en el Perú.
+    \item La arquitectura de \textbf{Llenado de Ranuras (Slot-Filling) determinista} resuelve eficazmente la volatilidad de los modelos de lenguaje compactos (3B), evitando alucinaciones y entregando una confirmación consistente y estructurada al usuario final.
+    \item La detección analítica de \textbf{Horas Valle} transforma a WAya de un mero asistente de respuestas en un sistema de soporte para la toma de decisiones (\textit{DSS}), impulsando la ocupación de la agenda y la rentabilidad del negocio.
+\end{enumerate}
+
+\section{Recomendaciones para Futuras Fases}
+\begin{itemize}[leftmargin=1.5em]
+    \item Incorporar un módulo de analítica de sentimientos (\textit{Sentiment Analysis}) sobre las consultas de WhatsApp para alertar de forma temprana a la administración sobre clientes en riesgo de deserción.
+    \item Escalar la capa analítica hacia un Data Warehouse dimensional con visualización dinámica en Apache Superset o Power BI para redes de consultorios multisede.
+    \item Entrenar adaptadores de bajo rango (\textit{LoRA}) locales para optimizar aún más la comprensión del argot y modismos peruanos en servicios de estética y odontología.
+\end{itemize}
+
+% ==============================================================================
+% FIN DEL DOCUMENTO
+% ==============================================================================
+\end{document}

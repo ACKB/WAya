@@ -42,6 +42,18 @@ db.exec(`
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   );
 
+  CREATE TABLE IF NOT EXISTS appointment_drafts (
+    phone TEXT PRIMARY KEY,
+    customer_name TEXT,
+    service_id TEXT,
+    service_name TEXT,
+    duration_minutes INTEGER,
+    date_str TEXT,
+    start_time TEXT,
+    end_time TEXT,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+
   CREATE INDEX IF NOT EXISTS idx_messages_phone ON messages(phone);
   CREATE INDEX IF NOT EXISTS idx_appointments_start ON appointments(start_time);
 `);
@@ -72,6 +84,17 @@ export interface AppointmentRecord {
   google_event_id: string | null;
 }
 
+export interface AppointmentDraft {
+  phone: string;
+  customer_name: string | null;
+  service_id: string | null;
+  service_name: string | null;
+  duration_minutes: number | null;
+  date_str: string | null;
+  start_time: string | null;
+  end_time: string | null;
+}
+
 export class DatabaseService {
   // Manejo de Usuarios
   static getUser(phone: string): UserRecord | null {
@@ -81,13 +104,26 @@ export class DatabaseService {
   }
 
   static upsertUserName(phone: string, name: string): void {
+    if (!name || typeof name !== 'string') return;
+    const clean = name.trim();
+    if (clean.length < 2 || clean.length > 40) return;
+    
+    // Rechazar cadenas sospechosas o fragmentos de prompts
+    const lower = clean.toLowerCase();
+    const invalidKeywords = ['año', 'proporciona', 'cliente', 'nombre', 'asistirá', 'usuario', 'desconocido', 'persona', 'persona que'];
+    if (invalidKeywords.some(kw => lower.includes(kw))) {
+      return;
+    }
+    const words = clean.split(/\s+/);
+    if (words.length > 3) return;
+
     const existing = this.getUser(phone);
     if (existing) {
       const stmt = db.prepare('UPDATE users SET name = ?, updated_at = CURRENT_TIMESTAMP WHERE phone = ?');
-      stmt.run(name, phone);
+      stmt.run(clean, phone);
     } else {
       const stmt = db.prepare('INSERT INTO users (phone, name) VALUES (?, ?)');
-      stmt.run(phone, name);
+      stmt.run(phone, clean);
     }
   }
 
@@ -163,5 +199,67 @@ export class DatabaseService {
   static cancelAppointment(id: number): void {
     const stmt = db.prepare("UPDATE appointments SET status = 'cancelled' WHERE id = ?");
     stmt.run(id);
+  }
+
+  // Manejo de Borrador de Cita de la Sesión (Slot-Filling)
+  static getDraft(phone: string): AppointmentDraft {
+    const stmt = db.prepare('SELECT phone, customer_name, service_id, service_name, duration_minutes, date_str, start_time, end_time FROM appointment_drafts WHERE phone = ?');
+    const row = stmt.get(phone) as AppointmentDraft | undefined;
+    if (row) return row;
+    return {
+      phone,
+      customer_name: this.getUser(phone)?.name || null,
+      service_id: null,
+      service_name: null,
+      duration_minutes: null,
+      date_str: null,
+      start_time: null,
+      end_time: null,
+    };
+  }
+
+  static updateDraft(phone: string, updates: Partial<AppointmentDraft>): AppointmentDraft {
+    const current = this.getDraft(phone);
+    const updated: AppointmentDraft = {
+      phone,
+      customer_name: updates.customer_name !== undefined ? updates.customer_name : current.customer_name,
+      service_id: updates.service_id !== undefined ? updates.service_id : current.service_id,
+      service_name: updates.service_name !== undefined ? updates.service_name : current.service_name,
+      duration_minutes: updates.duration_minutes !== undefined ? updates.duration_minutes : current.duration_minutes,
+      date_str: updates.date_str !== undefined ? updates.date_str : current.date_str,
+      start_time: updates.start_time !== undefined ? updates.start_time : current.start_time,
+      end_time: updates.end_time !== undefined ? updates.end_time : current.end_time,
+    };
+
+    const stmt = db.prepare(`
+      INSERT INTO appointment_drafts (phone, customer_name, service_id, service_name, duration_minutes, date_str, start_time, end_time, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+      ON CONFLICT(phone) DO UPDATE SET
+        customer_name = excluded.customer_name,
+        service_id = excluded.service_id,
+        service_name = excluded.service_name,
+        duration_minutes = excluded.duration_minutes,
+        date_str = excluded.date_str,
+        start_time = excluded.start_time,
+        end_time = excluded.end_time,
+        updated_at = CURRENT_TIMESTAMP
+    `);
+    stmt.run(
+      updated.phone,
+      updated.customer_name,
+      updated.service_id,
+      updated.service_name,
+      updated.duration_minutes,
+      updated.date_str,
+      updated.start_time,
+      updated.end_time
+    );
+
+    return updated;
+  }
+
+  static clearDraft(phone: string): void {
+    const stmt = db.prepare('DELETE FROM appointment_drafts WHERE phone = ?');
+    stmt.run(phone);
   }
 }

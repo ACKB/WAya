@@ -15,6 +15,18 @@ export class SlotCalculator {
     return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
   }
 
+  // Convertir "HH:mm" (24h) a formato de 12 horas am/pm usado en Perú (ej. "10:00 am", "02:30 pm")
+  static to12Hour(time24: string): string {
+    if (!time24) return '';
+    const [hStr, mStr] = time24.split(':');
+    let h = parseInt(hStr, 10);
+    const m = mStr || '00';
+    const period = h >= 12 ? 'pm' : 'am';
+    if (h === 0) h = 12;
+    else if (h > 12) h -= 12;
+    return `${String(h).padStart(2, '0')}:${m} ${period}`;
+  }
+
   // Obtener el día de la semana en español
   static getDayOfWeekKey(dateStr: string): string {
     const date = new Date(dateStr + 'T12:00:00');
@@ -26,6 +38,19 @@ export class SlotCalculator {
     const date = new Date(dateStr + 'T12:00:00');
     const days = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
     return days[date.getDay()];
+  }
+
+  static formatDateEs(dateStr: string): { dayName: string; dayNumber: number; monthName: string; fullDateEs: string } {
+    const months = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+    const [year, month, day] = dateStr.split('-').map(Number);
+    const dayName = this.getDayOfWeekNameEs(dateStr);
+    const monthName = months[month - 1] || 'Mes';
+    return {
+      dayName,
+      dayNumber: day,
+      monthName,
+      fullDateEs: `${dayName} ${day} de ${monthName}`
+    };
   }
 
   /**
@@ -113,14 +138,18 @@ export class SlotCalculator {
       const current = uniqueStarts[i];
       if (current - prev > 30) {
         // Hubo salto, cerramos rango previo
-        ranges.push(`de ${this.minutesToTime(currentStart)} a ${this.minutesToTime(prev + 30)}`);
+        const start12 = this.to12Hour(this.minutesToTime(currentStart));
+        const end12 = this.to12Hour(this.minutesToTime(prev + 30));
+        ranges.push(`de ${start12} a ${end12}`);
         currentStart = current;
       }
       prev = current;
     }
     // Último rango
     if (uniqueStarts.length > 0) {
-      ranges.push(`de ${this.minutesToTime(currentStart)} a ${this.minutesToTime(prev + 30)}`);
+      const start12 = this.to12Hour(this.minutesToTime(currentStart));
+      const end12 = this.to12Hour(this.minutesToTime(prev + 30));
+      ranges.push(`de ${start12} a ${end12}`);
     }
 
     return ranges.join(' y ');

@@ -57,7 +57,8 @@ echo -e "${CYAN}🦙 [1/2] Levantando servidor llama.cpp (puerto 8080, aceleraci
     --host 127.0.0.1 \
     --port 8080 \
     -ngl 99 \
-    -c 4096 \
+    -c 2048 \
+    -np 1 \
     > data/logs/llama.log 2>&1 &
 
 LLAMA_PID=$!

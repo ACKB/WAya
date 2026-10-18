@@ -7,3 +7,10 @@ credentials.json
 *.log
 models/
 bin/llama-*
+*.aux
+*.out
+*.toc
+*.lof
+*.lot
+*.fls
+*.fdb_latexmk

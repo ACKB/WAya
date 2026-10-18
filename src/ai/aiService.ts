@@ -85,6 +85,7 @@ export class AIService {
   static extractAndSaveNameHeuristic(text: string, phone: string): string | null {
     const patterns = [
       /(?:soy|me llamo|mi nombre es)\s+([A-ZÁÉÍÓÚÑa-záéíóúñ]+(?:\s+[A-ZÁÉÍÓÚÑa-záéíóúñ]+)?)/i,
+      /(?:a\s+nombre\s+de|anotame\s+como|anotame\s+a\s+nombre\s+de|con\s+el\s+nombre\s+de)\s+([A-ZÁÉÍÓÚÑa-záéíóúñ]+(?:\s+[A-ZÁÉÍÓÚÑa-záéíóúñ]+)?)/i,
       /(?:habla|le escribe)\s+([A-ZÁÉÍÓÚÑa-záéíóúñ]+)/i,
     ];
 
@@ -94,7 +95,6 @@ export class AIService {
       const match = text.match(pat);
       if (match && match[1]) {
         let parts = match[1].trim().split(/\s+/);
-        // Descartar conectores si la última palabra es una stop word
         while (parts.length > 1 && stopWords.includes(parts[parts.length - 1].toLowerCase())) {
           parts.pop();
         }
@@ -106,6 +106,25 @@ export class AIService {
         }
       }
     }
+
+    // Detección directa si el mensaje es únicamente el nombre (ej. "Yolanda", "Yolanda Rodríguez")
+    const words = text.trim().split(/\s+/);
+    if (words.length >= 1 && words.length <= 3) {
+      const isAlpha = words.every(w => /^[A-ZÁÉÍÓÚÑa-záéíóúñ]+$/.test(w));
+      const forbidden = [
+        'hola', 'buenos', 'dias', 'tardes', 'noches', 'gracias', 'ok', 'dale',
+        'tinte', 'corte', 'manicure', 'alisado', 'lunes', 'martes', 'miercoles',
+        'jueves', 'viernes', 'sabado', 'domingo', 'hoy', 'manana', 'mañana',
+        'salir', 'si', 'no', 'ya', 'perfecto', 'bien', 'claro'
+      ];
+      if (isAlpha && !words.some(w => forbidden.includes(w.toLowerCase()))) {
+        const directName = words.map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+        DatabaseService.upsertUserName(phone, directName);
+        console.log(`👤 Nombre directo detectado para ${phone}: ${directName}`);
+        return directName;
+      }
+    }
+
     return null;
   }
 
@@ -122,58 +141,88 @@ export class AIService {
     DatabaseService.saveMessage(phone, 'user', incomingText);
 
     // 3. Ejecutar Laya Decision Engine (Sistema 1) para clasificar y generar formulario fáctico
-    let groundedSummary = '';
+    let grounded: any = null;
     try {
-      const grounded = await LayaRouter.generateGroundedForm(phone, customerName, incomingText);
-      groundedSummary = grounded.formSummaryText;
-      console.log(`⚡ [Laya Decision] Intención: "${grounded.extracted.intent}" | Servicio: "${grounded.extracted.service?.name || 'Ninguno'}" | Fecha: "${grounded.extracted.targetDateStr}"`);
-
-      // Si el cliente pide agendar a una hora exacta y está disponible, registrarlo de inmediato
-      if (
-        grounded.extracted.intent === 'agendar' &&
-        grounded.extracted.service &&
-        grounded.extracted.targetDateStr &&
-        grounded.extracted.timeStr &&
-        grounded.formJson.hora_elegida_disponible === true
-      ) {
-        console.log(`🎯 Confirmando cita automáticamente para ${customerName || phone} a las ${grounded.extracted.timeStr}...`);
-        await CalendarService.bookAppointment({
-          phone,
-          customerName: customerName || 'Cliente',
-          serviceQuery: grounded.extracted.service.id,
-          dateStr: grounded.extracted.targetDateStr,
-          timeStr: grounded.extracted.timeStr
-        });
-      }
+      grounded = await LayaRouter.generateGroundedForm(phone, customerName, incomingText);
+      console.log(`⚡ [Laya Form State] Faltantes: [${grounded.formJson.faltantes.join(', ')}] | Completo: ${grounded.formJson.completo}`);
     } catch (layaErr: any) {
       console.warn('⚠️ Laya Decision Engine aviso:', layaErr?.message || layaErr);
     }
 
-    // 4. Obtener historial reciente y construir prompt con formulario inyectado
-    const recentMessages = DatabaseService.getRecentMessages(phone, 8);
-    const systemPrompt = buildSystemPrompt(customerName, phone, groundedSummary);
+    if (!grounded) {
+      return `Hola${customerName ? ' ' + customerName : ''}, un gusto saludarle. ¿En qué podemos ayudarle hoy en el salón?`;
+    }
+
+    // 4. Si el formulario está COMPLETO (Tenemos X, Y, Z, A, B y M): emitir respuesta fija estructurada
+    if (grounded.formJson.completo && grounded.formJson.respuesta_fija_confirmacion) {
+      console.log(`🎯 [Formulario 100% Completo] Confirmando cita para ${grounded.formJson.cliente}...`);
+      await CalendarService.bookAppointment({
+        phone,
+        customerName: grounded.formJson.cliente || 'Cliente',
+        serviceQuery: grounded.formJson.servicio || 'Servicio',
+        dateStr: grounded.formJson.fecha!,
+        timeStr: grounded.formJson.hora_inicio_24!
+      });
+      DatabaseService.clearDraft(phone);
+
+      // Verificar si el cliente hizo una consulta estética en este mismo mensaje (ej. sobre un color o corte)
+      const isAestheticQuery = /(?:color|rubio|negro|naranja|cobrizo|tinte|corte|recomiendas|opinas|queda|tono|laceado|alisado)/i.test(incomingText);
+      if (isAestheticQuery) {
+        try {
+          const aestheticMessages: ChatMessage[] = [
+            {
+              role: 'system',
+              content: `Eres una estilista experta y amable de "${config.servicesData.business.name}".
+El cliente preguntó: "${incomingText}".
+Respóndele brevemente a su consulta estética (máximo 2 líneas) con calidez, entusiasmo y criterio profesional. NO menciones fechas ni confirmaciones de citas (eso se agrega automáticamente después).`
+            },
+            { role: 'user', content: incomingText }
+          ];
+          const advice = await this.callAIProvider(aestheticMessages, phone, customerName);
+          const fullReply = `${advice.trim()}\n\n${grounded.formJson.respuesta_fija_confirmacion}`;
+          DatabaseService.saveMessage(phone, 'assistant', fullReply);
+          return fullReply;
+        } catch (err) {
+          console.warn('Aviso al consultar consejo estético:', err);
+        }
+      }
+
+      DatabaseService.saveMessage(phone, 'assistant', grounded.formJson.respuesta_fija_confirmacion);
+      return grounded.formJson.respuesta_fija_confirmacion;
+    }
+
+    // 5. Si está fuera de tema (Guardrail)
+    if (grounded.extracted.isOffTopic) {
+      const redirectReply = `Hola${customerName ? ' ' + customerName : ''}, hay que evitar movernos de tema. ¿Para cuándo quisiera su cita o qué tipo de tratamiento desea?`;
+      DatabaseService.saveMessage(phone, 'assistant', redirectReply);
+      return redirectReply;
+    }
+
+    // 6. Si faltan coordinar datos: pasar a Llama SOLO el JSON de estado limpio sin historial largo para no marearlo
+    const promptInstructions = `Eres la asistente virtual amable de "${config.servicesData.business.name}".
+Atiendes clientes en Perú por WhatsApp. Hablas con mucha amabilidad, sencillez y cortesía.
+
+ESTADO ACTUAL DE LA CITA:
+${grounded.formSummaryText}
+
+INSTRUCCIONES CLAVES:
+1. Si el cliente hizo una consulta sobre estética, colores o estilos (ej. "¿rubio o negro?", "naranja"), dale tu opinión profesional con entusiasmo (1-2 líneas).
+2. Luego, pídele amablemente lo que FALTA COORDINAR (${grounded.formJson.faltantes.join(', ')}).
+3. Utiliza SIEMPRE formato de 12 horas con am y pm (ej. "de 10:00 am a 11:30 am", "de 02:00 pm a 06:30 pm"). NUNCA uses formato militar de 24 horas.
+4. Mantén la respuesta breve, cálida y directa (máximo 2 párrafos). NO inventes confirmaciones de citas si aún falta coordinar datos.`;
 
     const messages: ChatMessage[] = [
-      { role: 'system', content: systemPrompt },
-      ...recentMessages.map(m => ({
-        role: m.role as 'user' | 'assistant',
-        content: m.content
-      }))
+      { role: 'system', content: promptInstructions },
+      { role: 'user', content: incomingText }
     ];
 
-    // 5. Llamar al modelo generativo para humanizar y responder con calidez
     try {
       const reply = await this.callAIProvider(messages, phone, customerName);
       DatabaseService.saveMessage(phone, 'assistant', reply);
       return reply;
     } catch (error: any) {
       console.error('❌ Error al comunicarse con el modelo generativo:', error?.message || error);
-      
-      // Mensaje de respaldo amable en caso de fallo de conexión con el LLM
-      let fallbackReply = `Hola${customerName ? ' ' + customerName : ''}, un gusto saludarle. En este momento estoy verificando nuestros horarios disponibles. Por favor, indíqueme qué tratamiento desea (como tinte, corte o manicure) y le confirmaremos de inmediato.`;
-      if (groundedSummary.includes('DESVÍO DE TEMA DETECTADO')) {
-        fallbackReply = `Hola${customerName ? ' ' + customerName : ''}, hay que evitar movernos de tema. ¿Para cuándo quisiera su cita o qué tipo de tratamiento desea?`;
-      }
+      const fallbackReply = `Hola${customerName ? ' ' + customerName : ''}, con mucho gusto le ayudamos con su cita. Actualmente nos falta coordinar: ${grounded.formJson.faltantes.join(', ')}. ¿Podría indicarnos ese dato para avanzar?`;
       DatabaseService.saveMessage(phone, 'assistant', fallbackReply);
       return fallbackReply;
     }
@@ -200,10 +249,14 @@ export class AIService {
     const requestPayload: any = {
       model,
       messages,
-      tools: aiTools,
-      tool_choice: 'auto',
-      temperature: 0.3,
+      temperature: 0.4,
     };
+
+    // Solo incluir tools en la nube si está explícitamente configurado, para evitar errores de gramática en modelos locales
+    if (isCloud && process.env.ENABLE_TOOLS === 'true') {
+      requestPayload.tools = aiTools;
+      requestPayload.tool_choice = 'auto';
+    }
 
     const response = await fetch(`${baseUrl}/chat/completions`, {
       method: 'POST',
