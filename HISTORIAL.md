@@ -123,3 +123,17 @@ Este archivo registra el historial de decisiones, requerimientos, arquitectura y
 - **Visibilidad Elegida**: Público en GitHub (`ACKB/WAya`).
 - **Publicación**: Repositorio inicializado y sincronizado mediante GitHub CLI (`gh repo create WAya --public --source=. --remote=origin --push`).
 
+### 12. Guía y Protocolo de Pruebas de WAya (18 de Octubre de 2026)
+- **Diagnóstico previo**:
+  - `bin/llama-server` y librerías C++ ya están listas en `./bin/`.
+  - `node_modules` instalado con `laya-system-one` (Rust mmBERT).
+  - Espacio en disco disponible: **53 GB libres** (holgado para el modelo de 2.0 GB).
+- **Validaciones ejecutadas con éxito**:
+  - `test-logic.ts`: Cálculo de bloques continuos para tinte (2 horas), memoria de usuarios en SQLite y prevención de solapamientos. (OK)
+  - `test-laya-pipeline.ts`: Clasificación determinista (~40 ms), retención de tratamiento en el contexto y guardrail anti-desvío (bloqueo de preguntas externas / jailbreak). (OK)
+- **Ruta de prueba para el usuario**:
+  1. `test-logic.ts` y `test-laya-pipeline.ts` para verificación unitaria inmediata.
+  2. `./setup.sh` para descargar el modelo de lenguaje de 2.0 GB (`Llama-3.2-3B-Instruct-Q4_K_M.gguf`).
+  3. `npm run simulate` (simulador en consola) o `./SystemOn.sh` (WhatsApp real con escaneo de QR).
+  4. `./SystemOff.sh` para liberación garantizada de la VRAM de la GPU.
+
