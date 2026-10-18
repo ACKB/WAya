@@ -119,6 +119,7 @@ Este archivo registra el historial de decisiones, requerimientos, arquitectura y
   - `git remote -v`: No tiene ningún remoto asociado actualmente.
   - `gh auth status`: La cuenta `ACKB` está autenticada y activa en el CLI de GitHub.
   - `gh repo list`: No existe aún un repositorio remoto creado para este proyecto.
-- **Estado Actual**: El proyecto reside de manera 100% local en `/home/ackb/Downloads/Proyecto`.
-- **Propuesta de Nomenclatura**: Se evalúan nombres orientados a IA y WhatsApp (`WA`) para el repositorio (ej. `wagent-ai`, `wa-laya-ai`, `wa-scheduler-ai`, `wa-citas-ai`).
+- **Nombre Definitivo Seleccionado**: **`WAya`** (fusión de *WhatsApp* + *Laya Decision Engine*).
+- **Visibilidad Elegida**: Público en GitHub (`ACKB/WAya`).
+- **Publicación**: Repositorio inicializado y sincronizado mediante GitHub CLI (`gh repo create WAya --public --source=. --remote=origin --push`).
 

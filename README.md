@@ -1,6 +1,6 @@
-# 🤖 Bot de WhatsApp para Gestión de Citas (Laya + llama.cpp)
+# 🤖 WAya — Agente de WhatsApp para Gestión de Citas (Laya + llama.cpp)
 
-Bot inteligente de WhatsApp diseñado para negocios de servicios (peluquerías, salones de belleza, odontología, barberías) con citas de duración variable, memoria contextual de clientes y trato cálido adaptado para adultos mayores.
+**WAya** es un agente inteligente de WhatsApp diseñado para negocios de servicios (peluquerías, salones de belleza, odontología, barberías) con citas de duración variable, memoria contextual de clientes y trato cálido adaptado para adultos mayores.
 
 Proyecto universitario con arquitectura desacoplada en dos fases:
 - **Sistema 1 (Laya Decision Engine, ~40 ms)**: Clasificación de intenciones y extracción de tópicos (cero alucinaciones).
