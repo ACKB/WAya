@@ -11,7 +11,7 @@ Proyecto universitario con arquitectura desacoplada en dos fases:
 ## 🚀 Arquitectura y Características
 
 1. **Duración variable por tratamiento y precios configurables**:
-   - Tratamientos, duraciones y precios se configuran en [`servicios.json`](file:///home/ackb/Downloads/Proyecto/servicios.json).
+   - Tratamientos, duraciones y precios se configuran en [`servicios.json`](servicios.json).
    - Busca en el calendario bloques continuos que cubran la duración exacta (ej. Tinte = 2 horas, Corte = 30 min, Alisado = 3 horas).
 2. **Memoria y trato humano**:
    - Recuerda el nombre de la clienta (ej. *María*) mediante SQLite local. No se lo vuelve a preguntar en futuras citas.
@@ -53,7 +53,7 @@ Detiene el bot, apaga `llama-server` y **libera el 100% de la VRAM de la GPU**:
 
 ## 📝 Personalización de Servicios, Tiempos y Precios
 
-Puedes editar directamente el archivo [`servicios.json`](file:///home/ackb/Downloads/Proyecto/servicios.json):
+Puedes editar directamente el archivo [`servicios.json`](servicios.json):
 
 ```json
 {
