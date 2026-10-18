@@ -2,6 +2,7 @@ import { config } from './config.js';
 import { CalendarService } from './calendar/calendarService.js';
 import { ReminderScheduler } from './scheduler/reminder.js';
 import { WhatsAppClient } from './whatsapp/client.js';
+import { startDashboardServer } from './dashboard/server.js';
 
 async function main() {
   console.log('========================================================');
@@ -18,7 +19,10 @@ async function main() {
   // 2. Iniciar servicio de recordatorios (revisa cada minuto citas de 1h antes)
   ReminderScheduler.start();
 
-  // 3. Iniciar conexión de WhatsApp vía Baileys
+  // 3. Iniciar servidor de Dashboard Web en tiempo real (ideal para tablet de recepción)
+  startDashboardServer();
+
+  // 4. Iniciar conexión de WhatsApp vía Baileys
   await WhatsAppClient.start();
 
   // Manejo de apagado limpio

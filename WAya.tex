@@ -476,8 +476,8 @@ Para respaldar la consistencia transaccional y analítica, la estructura de base
 
 \section{Diccionario de Datos del Sistema}
 
-\subsection{Tabla: \texttt{users} (Pacientes y Clientes)}
-Almacena el registro maestro de identidades de los clientes que interactúan a través de WhatsApp.
+\subsection{Tabla: \texttt{users} (Titulares de la Línea WhatsApp)}
+Almacena el registro maestro de los números de contacto que interactúan a través de WhatsApp.
 \begin{table}[h!]
 \centering
 \small
@@ -486,17 +486,42 @@ Almacena el registro maestro de identidades de los clientes que interactúan a t
 \rowcolor{BrandPrimary!20}
 \textbf{Atributo} & \textbf{Tipo de Dato} & \textbf{Restricción} & \textbf{Descripción y Regla de Negocio} \\
 \hline
-\texttt{id} & INTEGER & PK, NOT NULL & Clave primaria numérica autoincremental. \\
+\texttt{phone} & VARCHAR(25) & PK, NOT NULL & Identificador E.164 del contacto (ej. 51987654321). \\
 \hline
-\texttt{phone\_number} & VARCHAR(25) & UNIQUE, NOT NULL & Identificador E.164 del contacto (ej. 51987654321). \\
+\texttt{name} & VARCHAR(120) & NULL & Nombre detectado o confirmado del titular ($X$). \\
 \hline
-\texttt{full\_name} & VARCHAR(120) & NULL & Nombre detectado o confirmado por el cliente ($X$). \\
+\texttt{notes} & TEXT & NULL & Observaciones o preferencias registradas. \\
 \hline
-\texttt{created\_at} & DATETIME & NOT NULL & Fecha y hora de creación del registro. \\
+\texttt{created\_at} & DATETIME & NOT NULL & Fecha y hora de primer contacto en el canal. \\
 \hline
 \end{tabularx}
 \caption{Diccionario de datos: Tabla \texttt{users}.}
 \label{tab:dic_users}
+\end{table}
+
+\subsection{Tabla: \texttt{beneficiaries} (Sub-Usuarios y Familiares - Relación 1:N)}
+Permite disociar el canal de comunicación del sujeto receptor del tratamiento (ej. una madre que agenda para su hijo o esposo).
+\begin{table}[h!]
+\centering
+\small
+\begin{tabularx}{\textwidth}{|p{2.6cm}|p{2.9cm}|p{2.4cm}|X|}
+\hline
+\rowcolor{BrandPrimary!20}
+\textbf{Atributo} & \textbf{Tipo de Dato} & \textbf{Restricción} & \textbf{Descripción y Regla de Negocio} \\
+\hline
+\texttt{id} & INTEGER & PK, NOT NULL & Clave primaria autoincremental del beneficiario. \\
+\hline
+\texttt{phone} & VARCHAR(25) & FK, NOT NULL & Llave foránea hacia el titular (\texttt{users.phone}). \\
+\hline
+\texttt{name} & VARCHAR(100) & NOT NULL & Nombre del paciente o cliente real (ej. Luis). \\
+\hline
+\texttt{relationship}& VARCHAR(50) & NOT NULL & Parentesco: \texttt{titular}, \texttt{hijo}, \texttt{esposo}, \texttt{mama}. \\
+\hline
+\texttt{created\_at} & DATETIME & NOT NULL & Fecha de registro del sub-usuario. \\
+\hline
+\end{tabularx}
+\caption{Diccionario de datos: Tabla \texttt{beneficiaries}.}
+\label{tab:dic_beneficiaries}
 \end{table}
 
 \subsection{Tabla: \texttt{services} (Catálogo de Procedimientos)}
@@ -667,6 +692,16 @@ WAya incorpora un modelo de series temporales que calcula la probabilidad de vac
 \end{equation}
 donde $N$ es la ventana móvil de semanas analizadas. Cuando $P(\text{Vacancia}_{d, h}) \ge 0.70$, el sistema marca el bloque como \textbf{Hora Valle Crítica} y habilita una regla de negocio prescriptiva: ofrecer de manera proactiva incentivos tarifarios (ej. 20\% de descuento en limpieza o peinado) a los clientes que solicitan citas en horarios flexibles, logrando nivelar la curva de ocupación y maximizar los ingresos del establecimiento.
 
+\section{Dashboard Web en Tiempo Real vs. Reportes Estáticos de Chat}
+Una de las principales limitaciones de las soluciones que envían resúmenes periódicos por WhatsApp (ej. reportes dominicales) es la pérdida de sincronía: si un cliente cancela o reprograma su cita el lunes temprano, el mensaje estático recibido queda desfasado e induce a errores operativos.
+
+WAya implementa un \textbf{Dashboard Web en Tiempo Real} que actúa como la \textbf{Única Fuente de la Verdad (\textit{Single Source of Truth})}:
+\begin{itemize}[leftmargin=1.5em]
+    \item \textbf{Consistencia y Reactividad Inmediata:} El panel web se conecta directamente a SQLite mediante una API REST ultraligera, reflejando cualquier cancelación, nueva cita o reprogramación en menos de 2 milisegundos.
+    \item \textbf{Modo Kiosk para Pantallas de Recepción:} Diseñado con tipografía legible y alto contraste, apto para ejecutarse en modo pantalla completa en tablets o pantallas táctiles colgadas en la pared de recepción.
+    \item \textbf{Visualización de Sub-Usuarios y Familias:} Permite al personal del establecimiento ver de un vistazo quién es el titular que escribe y a qué beneficiario (hijo, esposo, etc.) corresponde cada turno agendado.
+\end{itemize}
+
 % ------------------------------------------------------------------------------
 % CAPÍTULO 6: GOBERNANZA, PRIVACIDAD Y SEGURIDAD
 % ------------------------------------------------------------------------------
@@ -700,16 +735,16 @@ A diferencia de los chatbots comerciales que transmiten el historial íntegro de
 
 \section{Conclusiones del Proyecto}
 \begin{enumerate}[leftmargin=1.5em]
-    \item El proyecto \textbf{WAya} materializa de forma rigurosa los fundamentos del curso de \textbf{Gestión y Análisis de Datos e Información}, articulando el ciclo de vida del dato, el modelado relacional en 3FN, la calidad de información y la analítica predictiva en una solución de impacto real para las MYPEs de servicios en el Perú.
+    \item El proyecto \textbf{WAya} materializa de forma rigurosa los fundamentos del curso de \textbf{Gestión y Análisis de Datos e Información}, articulando el ciclo de vida del dato, el modelado relacional en 3FN con beneficiarios (1:N), la calidad de información y la analítica predictiva en una solución de impacto real para las MYPEs de servicios en el Perú.
     \item La arquitectura de \textbf{Llenado de Ranuras (Slot-Filling) determinista} resuelve eficazmente la volatilidad de los modelos de lenguaje compactos (3B), evitando alucinaciones y entregando una confirmación consistente y estructurada al usuario final.
-    \item La detección analítica de \textbf{Horas Valle} transforma a WAya de un mero asistente de respuestas en un sistema de soporte para la toma de decisiones (\textit{DSS}), impulsando la ocupación de la agenda y la rentabilidad del negocio.
+    \item La detección analítica de \textbf{Horas Valle} y el \textbf{Dashboard Web en Vivo} transforman a WAya de un mero bot de mensajería en un sistema de soporte para la toma de decisiones (\textit{DSS}), impulsando la ocupación de la agenda y la rentabilidad del negocio.
 \end{enumerate}
 
-\section{Recomendaciones para Futuras Fases}
+\section{Recomendaciones para Futuras Fases y Modelo de Producto Físico}
 \begin{itemize}[leftmargin=1.5em]
-    \item Incorporar un módulo de analítica de sentimientos (\textit{Sentiment Analysis}) sobre las consultas de WhatsApp para alertar de forma temprana a la administración sobre clientes en riesgo de deserción.
-    \item Escalar la capa analítica hacia un Data Warehouse dimensional con visualización dinámica en Apache Superset o Power BI para redes de consultorios multisede.
-    \item Entrenar adaptadores de bajo rango (\textit{LoRA}) locales para optimizar aún más la comprensión del argot y modismos peruanos en servicios de estética y odontología.
+    \item \textbf{Modelo Appliance Todo-en-Uno (Tablet Kiosk para Recepción - S/. 3,000):} Se propone como innovación comercial de hardware empaquetar WAya dentro de una tablet de alto rendimiento o mini PC con pantalla táctil montada en pared. El negocio no adquiere una suscripción de software abstracta ni hardware disperso, sino un \textit{Dispositivo Integral de Gestión y Recepción} que aloja el servidor Edge AI local, procesa los mensajes de WhatsApp, almacena la base de datos y sirve como pantalla interactiva de horarios en el propio local comercial.
+    \item \textbf{Módulo de Analítica de Sentimientos y Churn:} Incorporar modelos ligeros de clasificación de polaridad sobre las conversaciones para alertar proactivamente a la recepcionista cuando un cliente expresa insatisfacción.
+    \item \textbf{Consolidación en Data Warehouse Multisede:} Extender el pipeline analítico hacia esquemas en estrella para cadenas de franquicias o redes odontológicas con múltiples locales en Lima.
 \end{itemize}
 
 % ==============================================================================

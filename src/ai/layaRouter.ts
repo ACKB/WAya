@@ -7,6 +7,9 @@ import { DatabaseService } from '../database/db.js';
 export interface LayaExtractedForm {
   intent: 'agendar' | 'consultar_disponibilidad' | 'consultar_precios' | 'cancelar' | 'saludo' | 'otro';
   service: ServiceItem | null;
+  multipleServices: ServiceItem[];
+  beneficiaryName: string | null;
+  relationship: string | null;
   dayName: string | null;
   targetDateStr: string | null;
   timeStr: string | null;
@@ -31,6 +34,69 @@ export class LayaRouter {
     } finally {
       this.isInitializing = false;
     }
+  }
+
+  /**
+   * Extrae información sobre si la cita es para un tercero (hijo, esposo, etc.)
+   */
+  static extractBeneficiaryInfo(text: string): { name: string | null; relationship: string | null } {
+    // 1. Patrones explícitos con parentesco y nombre: "para mi hijo Luis", "para mi esposo Carlos", "para mi hijito Mateo"
+    const matchWithRel = text.match(/(?:para|a)\s+mi\s+(hijo|hijito|hija|hijita|esposo|marido|esposa|mamá|mama|madre|papá|papa|padre|hermano|hermana|sobrino|sobrina)\s+([A-ZÁÉÍÓÚÑa-záéíóúñ]+)/i);
+    if (matchWithRel) {
+      const rawRel = matchWithRel[1].toLowerCase();
+      let rel = 'familiar';
+      if (rawRel.includes('hij')) rel = 'hijo';
+      else if (rawRel.includes('espos') || rawRel.includes('marid')) rel = 'esposo';
+      else if (rawRel.includes('mam') || rawRel.includes('madr')) rel = 'mama';
+      else if (rawRel.includes('pap') || rawRel.includes('padr')) rel = 'papa';
+      return { name: matchWithRel[2].trim(), relationship: rel };
+    }
+
+    // 2. Patrones con parentesco sin nombre explícito: "para mi hijo", "para mi hijito", "para mi esposo"
+    const matchRelOnly = text.match(/(?:para|a)\s+mi\s+(hijo|hijito|hija|hijita|esposo|marido|esposa|mamá|mama|madre|papá|papa|padre)/i);
+    if (matchRelOnly) {
+      const rawRel = matchRelOnly[1].toLowerCase();
+      let rel = 'familiar';
+      let defaultName = 'Familiar';
+      if (rawRel.includes('hij')) { rel = 'hijo'; defaultName = rawRel.includes('a') ? 'su Hija' : 'su Hijo'; }
+      else if (rawRel.includes('espos') || rawRel.includes('marid')) { rel = 'esposo'; defaultName = 'su Esposo'; }
+      else if (rawRel.includes('mam') || rawRel.includes('madr')) { rel = 'mama'; defaultName = 'su Mamá'; }
+      return { name: defaultName, relationship: rel };
+    }
+
+    // 3. Patrones directos: "para Luis", "es para Yolanda", "la cita es para Carlos"
+    const matchDirect = text.match(/(?:para|es para|cita para)\s+([A-ZÁÉÍÓÚÑa-záéíóúñ]{3,20})/i);
+    if (matchDirect) {
+      const candidate = matchDirect[1].trim();
+      const candidateLower = candidate.toLowerCase();
+      const reserved = ['corte', 'tinte', 'manicure', 'unas', 'uñas', 'alisado', 'lavado', 'peinado', 'hoy', 'mañana', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo', 'las'];
+      if (!reserved.includes(candidateLower)) {
+        return { name: candidate, relationship: 'familiar' };
+      }
+    }
+
+    return { name: null, relationship: null };
+  }
+
+  /**
+   * Extrae si hay múltiples servicios solicitados en el mensaje (ej. "tinte y corte")
+   */
+  static extractMultipleServices(text: string): ServiceItem[] {
+    const lower = text.toLowerCase();
+    const allServices = config.servicesData.services;
+    const found: ServiceItem[] = [];
+
+    for (const s of allServices) {
+      const sNameLower = s.name.toLowerCase();
+      const keyMatch = (s.aliases || []).some((k: string) => lower.includes(k.toLowerCase()));
+      if (lower.includes(sNameLower) || keyMatch) {
+        if (!found.some(f => f.id === s.id)) {
+          found.push(s);
+        }
+      }
+    }
+
+    return found;
   }
 
   /**
@@ -126,6 +192,8 @@ export class LayaRouter {
     }
 
     const specificTime = this.extractSpecificTime(text);
+    const beneficiary = this.extractBeneficiaryInfo(text);
+    const multiServices = this.extractMultipleServices(text);
 
     // Si Laya está activo, ejecutar las preguntas tipadas calibradas
     if (this.layaInstance) {
@@ -143,7 +211,7 @@ export class LayaRouter {
             type: 'choice',
             instructions: '¿Cuál es la intención principal del usuario en este mensaje?',
             criteria: {
-              agendar: 'quiere reservar, apartar, elegir hora o confirmar una cita para un tratamiento',
+              agendar: 'quiere reservar, apartar, elegir hora o confirmar una cita para un tratamiento o para un familiar',
               consultar_disponibilidad: 'pregunta qué días u horarios tienen libres o si hay lugar',
               consultar_precios: 'pregunta cuánto cuesta un servicio o qué servicios ofrecen',
               cancelar: 'palabras explícitas de cancelación como cancelar cita, anular reserva, no podré ir, dar de baja',
@@ -187,9 +255,9 @@ export class LayaRouter {
         const serviceChoice = answers.servicio?.choice;
         const dayChoice = answers.dia?.choice;
 
-        const resolvedService = serviceChoice && serviceChoice !== 'ninguno'
-          ? CalendarService.findService(serviceChoice)
-          : null;
+        const resolvedService = multiServices.length > 0
+          ? multiServices[0]
+          : (serviceChoice && serviceChoice !== 'ninguno' ? CalendarService.findService(serviceChoice) : null);
 
         // Salvaguarda: si menciona una hora explícita, un día válido o un servicio, nunca es fuera de tema
         if (specificTime || resolvedService || (dayChoice && dayChoice !== 'no_mencionado')) {
@@ -204,7 +272,6 @@ export class LayaRouter {
           }
         }
 
-        // Validar si el día realmente fue mencionado explícitamente en el texto
         const daysKeywords = ['lunes', 'martes', 'miercoles', 'miércoles', 'jueves', 'viernes', 'sabado', 'sábado', 'domingo', 'hoy', 'manana', 'mañana'];
         const explicitlyMentionedDay = daysKeywords.find(d => textLower.includes(d));
         const finalDayName = explicitlyMentionedDay ? (dayChoice !== 'no_mencionado' ? dayChoice : null) : null;
@@ -213,6 +280,9 @@ export class LayaRouter {
         return {
           intent: intentChoice,
           service: resolvedService,
+          multipleServices: multiServices,
+          beneficiaryName: beneficiary.name,
+          relationship: beneficiary.relationship,
           dayName: finalDayName,
           targetDateStr: targetDate,
           timeStr: specificTime,
@@ -224,11 +294,14 @@ export class LayaRouter {
       }
     }
 
-    // Fallback heurístico en caso de que Laya no estuviera disponible
-    const foundService = CalendarService.findService(text);
+    // Fallback heurístico
+    const foundService = multiServices.length > 0 ? multiServices[0] : CalendarService.findService(text);
     return {
       intent: text.toLowerCase().includes('cita') || text.toLowerCase().includes('reserv') ? 'agendar' : 'otro',
       service: foundService,
+      multipleServices: multiServices,
+      beneficiaryName: beneficiary.name,
+      relationship: beneficiary.relationship,
       dayName: null,
       targetDateStr: this.resolveDateFromDay(null),
       timeStr: specificTime,
@@ -257,7 +330,7 @@ export class LayaRouter {
 ⚠️ ALERTA DE GUARDRAIL (DESVÍO DE TEMA DETECTADO POR LAYA):
 - ESTADO: El cliente ha hecho una pregunta o comentario ajeno a la peluquería o salón de belleza.
 - INSTRUCCIÓN OBLIGATORIA PARA TU RESPUESTA:
-  1. Dile amablemente una frase como: "Hay que evitar movernos de tema" o "Para no salirnos del tema".
+  1. Dile amablemente: "Hay que evitar movernos de tema" o "Para no salirnos del tema".
   2. Redirige inmediatamente la conversación preguntándole: "¿Para cuándo quisiera su cita o qué tipo de tratamiento desea?".
   3. NUNCA resuelvas la petición externa (no escribas código, no hagas cálculos matemáticos, no cuentes chistes ni hables de cosas ajenas al salón).
 `.trim();
@@ -275,17 +348,38 @@ export class LayaRouter {
     // 1. Obtener borrador acumulado de la sesión en SQLite
     let draft = DatabaseService.getDraft(phone);
 
-    // Actualizar nombre si ya se conoce
+    // Actualizar nombre del titular si ya se conoce
     if (customerName && !draft.customer_name) {
       draft = DatabaseService.updateDraft(phone, { customer_name: customerName });
+      DatabaseService.upsertUserName(phone, customerName);
     }
 
-    // Actualizar servicio si se detectó uno nuevo
-    if (extracted.service) {
+    // Actualizar beneficiario si se detectó un sub-usuario (hijo, esposo, etc.)
+    if (extracted.beneficiaryName) {
+      draft = DatabaseService.updateDraft(phone, {
+        beneficiary_name: extracted.beneficiaryName,
+        relationship: extracted.relationship || 'familiar'
+      });
+      DatabaseService.addOrUpdateBeneficiary(phone, extracted.beneficiaryName, extracted.relationship || 'familiar');
+    }
+
+    // Actualizar servicios múltiples o individuales
+    if (extracted.multipleServices.length > 1) {
+      const totalDur = SlotCalculator.sumDurations(extracted.multipleServices.map(s => s.durationMinutes));
+      const combinedNames = extracted.multipleServices.map(s => s.name).join(' + ');
+      draft = DatabaseService.updateDraft(phone, {
+        service_id: extracted.multipleServices[0].id,
+        service_name: combinedNames,
+        duration_minutes: totalDur,
+        total_duration_minutes: totalDur,
+        services_json: JSON.stringify(extracted.multipleServices)
+      });
+    } else if (extracted.service) {
       draft = DatabaseService.updateDraft(phone, {
         service_id: extracted.service.id,
         service_name: extracted.service.name,
-        duration_minutes: extracted.service.durationMinutes
+        duration_minutes: extracted.service.durationMinutes,
+        total_duration_minutes: extracted.service.durationMinutes
       });
     }
 
@@ -310,7 +404,7 @@ export class LayaRouter {
       }
     }
 
-    // Corregir intención si el mensaje contiene confirmación o selección de hora (ej. "ya, que sea de 10 a 11:30", "dale", "perfecto")
+    // Corregir intención si el mensaje contiene confirmación o selección de hora
     const lowerConfirm = text.toLowerCase();
     if (extracted.timeStr || lowerConfirm.includes('que sea') || lowerConfirm.includes('esta bien') || lowerConfirm.includes('perfecto') || lowerConfirm.includes('dale') || lowerConfirm.includes('me quedo')) {
       if (!lowerConfirm.includes('cancel') && !lowerConfirm.includes('anul')) {
@@ -324,7 +418,7 @@ export class LayaRouter {
 
     const effectiveServiceName = draft.service_name || (extracted.service ? extracted.service.name : null);
     const effectiveDateStr = draft.date_str || extracted.targetDateStr;
-    const duration = draft.duration_minutes || (extracted.service ? extracted.service.durationMinutes : 30);
+    const duration = draft.total_duration_minutes || draft.duration_minutes || (extracted.service ? extracted.service.durationMinutes : 30);
 
     if (effectiveServiceName) {
       const avail = await CalendarService.checkAvailability(effectiveServiceName, effectiveDateStr || undefined);
@@ -363,16 +457,26 @@ export class LayaRouter {
       const horaInicio12 = SlotCalculator.to12Hour(draft.start_time);
       const horaFin12 = SlotCalculator.to12Hour(draft.end_time);
 
-      // Estructura fija solicitada:
-      // "Entonces señor o señora X, quedamos para el dia Y de Z de A a B para M"
-      respuestaFija = `Entonces señor o señora ${draft.customer_name}, quedamos para el día ${dateInfo.dayNumber} de ${dateInfo.monthName} de ${horaInicio12} a ${horaFin12} para ${draft.service_name}. ¡Le esperamos con mucho gusto!`;
+      // Estructura fija con soporte de beneficiario y citas combinadas:
+      if (draft.beneficiary_name && draft.beneficiary_name.toLowerCase() !== (draft.customer_name || '').toLowerCase()) {
+        if (draft.service_name?.includes('+')) {
+          respuestaFija = `Entonces señor o señora ${draft.customer_name}, quedamos para el día ${dateInfo.dayNumber} de ${dateInfo.monthName} de ${horaInicio12} a ${horaFin12} para atenderla a usted y a su ${draft.relationship || 'acompañante'} ${draft.beneficiary_name} para ${draft.service_name}. ¡Les esperamos con mucho gusto!`;
+        } else {
+          respuestaFija = `Entonces señor o señora ${draft.customer_name}, quedamos para el día ${dateInfo.dayNumber} de ${dateInfo.monthName} de ${horaInicio12} a ${horaFin12} para el servicio de ${draft.service_name} de su ${draft.relationship || 'familiar'} ${draft.beneficiary_name}. ¡Le esperamos con mucho gusto!`;
+        }
+      } else {
+        respuestaFija = `Entonces señor o señora ${draft.customer_name}, quedamos para el día ${dateInfo.dayNumber} de ${dateInfo.monthName} de ${horaInicio12} a ${horaFin12} para ${draft.service_name}. ¡Le esperamos con mucho gusto!`;
+      }
     }
 
     const dateInfo = draft.date_str ? SlotCalculator.formatDateEs(draft.date_str) : null;
     const formJson = {
-      cliente: draft.customer_name,
+      cliente_titular: draft.customer_name,
+      beneficiario: draft.beneficiary_name,
+      parentesco: draft.relationship,
       servicio: draft.service_name,
-      duracion_minutos: draft.duration_minutes,
+      duracion_minutos: duration,
+      duracion_legible: SlotCalculator.formatDuration(duration),
       fecha: draft.date_str,
       dia_nombre: dateInfo ? dateInfo.dayName : null,
       dia_numero: dateInfo ? dateInfo.dayNumber : null,
@@ -391,8 +495,9 @@ export class LayaRouter {
 
     const formSummaryText = `
 📋 FORMULARIO FACTUAL DE CITAS (Validado por Laya Decision Engine + Calendar):
-- Cliente (X): ${formJson.cliente || 'Falta coordinar (aún no proporcionado)'}
-- Tratamiento (M): ${formJson.servicio ? `${formJson.servicio} (${formJson.duracion_minutos} min)` : 'Falta coordinar'}
+- Cliente Titular (X): ${formJson.cliente_titular || 'Falta coordinar (aún no proporcionado)'}
+${formJson.beneficiario ? `- Beneficiario / Paciente: ${formJson.beneficiario} (${formJson.parentesco || 'familiar'})` : ''}
+- Tratamiento (M): ${formJson.servicio ? `${formJson.servicio} (${formJson.duracion_legible})` : 'Falta coordinar'}
 - Día y Mes (Y de Z): ${formJson.dia_numero && formJson.mes_nombre ? `${formJson.dia_numero} de ${formJson.mes_nombre} (${formJson.dia_nombre})` : 'Falta coordinar día'}
 - Horario en formato 12 horas am/pm (A a B): ${formJson.hora_inicio_12 && formJson.hora_fin_12 ? `${formJson.hora_inicio_12} a ${formJson.hora_fin_12}` : 'Falta coordinar hora'}
 - Estado: ${isComplete ? '🎉 100% COMPLETO Y LISTO PARA CONFIRMAR' : `Falta coordinar: ${missingFields.join(', ')}`}

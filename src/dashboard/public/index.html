@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WAya | Dashboard Analítico en Vivo y Control de Citas</title>
+  <!-- Google Fonts: Outfit -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #080C14;
+      --bg-surface: #0F172A;
+      --bg-card: #141E33;
+      --border-color: #1E293B;
+      --primary: #2563EB;
+      --primary-light: #3B82F6;
+      --secondary: #0D9488;
+      --accent: #10B981;
+      --wa-green: #25D366;
+      --danger: #EF4444;
+      --warning: #F59E0B;
+      --text-main: #F8FAFC;
+      --text-muted: #94A3B8;
+      --radius-sm: 8px;
+      --radius-md: 14px;
+      --radius-lg: 20px;
+      --shadow-card: 0 10px 25px -5px rgba(0, 0, 0, 0.4), 0 8px 10px -6px rgba(0, 0, 0, 0.3);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+
+    /* TOP BAR */
+    header {
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border-color);
+      padding: 1rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.8rem;
+    }
+
+    .brand-logo {
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 1.2rem;
+      box-shadow: 0 0 15px rgba(37, 99, 235, 0.4);
+    }
+
+    .brand-text h1 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .brand-badge {
+      font-size: 0.7rem;
+      background: rgba(37, 211, 102, 0.15);
+      color: var(--wa-green);
+      border: 1px solid rgba(37, 211, 102, 0.3);
+      padding: 2px 8px;
+      border-radius: 20px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .system-status {
+      display: flex;
+      align-items: center;
+      gap: 1.2rem;
+    }
+
+    .status-pill {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      background: rgba(30, 41, 59, 0.6);
+      padding: 6px 12px;
+      border-radius: 20px;
+      border: 1px solid var(--border-color);
+    }
+
+    .dot-live {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background-color: var(--wa-green);
+      box-shadow: 0 0 8px var(--wa-green);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(1.2); }
+      100% { opacity: 1; transform: scale(1); }
+    }
+
+    .btn-kiosk {
+      background: linear-gradient(135deg, var(--primary), #1D4ED8);
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 10px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      transition: all 0.2s ease;
+    }
+
+    .btn-kiosk:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 15px rgba(37, 99, 235, 0.4);
+    }
+
+    /* MAIN CONTAINER */
+    main {
+      flex: 1;
+      padding: 2rem;
+      max-width: 1400px;
+      width: 100%;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 2rem;
+    }
+
+    /* KPI CARDS GRID */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 1.2rem;
+    }
+
+    .kpi-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      padding: 1.4rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      box-shadow: var(--shadow-card);
+      position: relative;
+      overflow: hidden;
+      transition: transform 0.2s ease;
+    }
+
+    .kpi-card:hover {
+      transform: translateY(-3px);
+      border-color: rgba(59, 130, 246, 0.4);
+    }
+
+    .kpi-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, var(--primary), var(--secondary));
+    }
+
+    .kpi-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .kpi-value {
+      font-size: 2.2rem;
+      font-weight: 700;
+      color: var(--text-main);
+      letter-spacing: -1px;
+    }
+
+    .kpi-sub {
+      font-size: 0.8rem;
+      color: var(--accent);
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+
+    /* TABS */
+    .nav-tabs {
+      display: flex;
+      gap: 0.8rem;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 0.8rem;
+    }
+
+    .tab-btn {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 1rem;
+      font-weight: 600;
+      padding: 8px 16px;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .tab-btn.active {
+      background: var(--bg-surface);
+      color: var(--primary-light);
+      border: 1px solid var(--border-color);
+    }
+
+    .tab-btn:hover:not(.active) {
+      color: var(--text-main);
+    }
+
+    /* SECTIONS */
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+      animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* APPOINTMENTS TABLE / KIOSK */
+    .table-container {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      box-shadow: var(--shadow-card);
+    }
+
+    .table-header {
+      padding: 1.2rem 1.5rem;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(15, 23, 42, 0.4);
+    }
+
+    .table-header h2 {
+      font-size: 1.15rem;
+      font-weight: 600;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+    }
+
+    th {
+      background: rgba(15, 23, 42, 0.8);
+      color: var(--text-muted);
+      font-weight: 600;
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      padding: 1rem 1.4rem;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    td {
+      padding: 1.1rem 1.4rem;
+      border-bottom: 1px solid rgba(30, 41, 59, 0.5);
+      font-size: 0.95rem;
+    }
+
+    tr:hover {
+      background: rgba(30, 41, 59, 0.3);
+    }
+
+    .badge-status {
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .status-confirmed {
+      background: rgba(16, 185, 129, 0.15);
+      color: var(--accent);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+
+    .status-cancelled {
+      background: rgba(239, 68, 68, 0.15);
+      color: var(--danger);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+
+    .status-completed {
+      background: rgba(59, 130, 246, 0.15);
+      color: var(--primary-light);
+      border: 1px solid rgba(59, 130, 246, 0.3);
+    }
+
+    .beneficiary-tag {
+      font-size: 0.8rem;
+      background: rgba(13, 148, 136, 0.2);
+      color: #2DD4BF;
+      padding: 2px 8px;
+      border-radius: 6px;
+      display: inline-block;
+      margin-top: 4px;
+    }
+
+    .btn-action {
+      background: none;
+      border: 1px solid var(--border-color);
+      color: var(--text-muted);
+      padding: 6px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.8rem;
+      transition: all 0.2s;
+    }
+
+    .btn-action:hover {
+      background: rgba(239, 68, 68, 0.2);
+      color: var(--danger);
+      border-color: var(--danger);
+    }
+
+    /* VALLEY HOURS HEATMAP / CARDS */
+    .valley-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 1.5rem;
+    }
+
+    .valley-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.8rem;
+      box-shadow: var(--shadow-card);
+      border-left: 4px solid var(--warning);
+    }
+
+    .valley-card h3 {
+      font-size: 1.1rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .valley-badge {
+      font-size: 0.75rem;
+      padding: 2px 8px;
+      border-radius: 12px;
+      background: rgba(245, 158, 11, 0.2);
+      color: var(--warning);
+      font-weight: 600;
+    }
+
+    .promo-recommendation {
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px dashed rgba(245, 158, 11, 0.3);
+      padding: 0.8rem;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      color: #FDE68A;
+      line-height: 1.4;
+    }
+
+    /* BENEFICIARIES LIST */
+    .family-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1.2rem;
+    }
+
+    .family-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      padding: 1.4rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.8rem;
+    }
+
+    .family-title {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      font-weight: 600;
+    }
+
+    .family-phone {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    /* FOOTER */
+    footer {
+      border-top: 1px solid var(--border-color);
+      padding: 1rem 2rem;
+      text-align: center;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      background: var(--bg-dark);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- HEADER -->
+  <header>
+    <div class="brand">
+      <div class="brand-logo">W</div>
+      <div class="brand-text">
+        <h1 id="business-name">WAya Dashboard <span class="brand-badge">En Vivo</span></h1>
+      </div>
+    </div>
+
+    <div class="system-status">
+      <div class="status-pill">
+        <span class="dot-live"></span>
+        <span>SQLite + Laya Engine Activo</span>
+      </div>
+      <div class="status-pill" id="clock-display">
+        --:-- --
+      </div>
+      <button class="btn-kiosk" id="fullscreen-btn" onclick="toggleFullScreen()">
+        ⛶ Modo Kiosk Tablet
+      </button>
+    </div>
+  </header>
+
+  <!-- MAIN -->
+  <main>
+    <!-- KPIS EN VIVO -->
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <div class="kpi-header">
+          <span>Citas de Hoy</span>
+          <span>📅</span>
+        </div>
+        <div class="kpi-value" id="kpi-today">0</div>
+        <div class="kpi-sub" id="kpi-today-sub">Agendadas para el día</div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-header">
+          <span>Ingreso Proyectado</span>
+          <span>💰</span>
+        </div>
+        <div class="kpi-value" id="kpi-revenue">S/. 0</div>
+        <div class="kpi-sub">En reservas confirmadas</div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-header">
+          <span>Ocupación de Agenda</span>
+          <span>📊</span>
+        </div>
+        <div class="kpi-value" id="kpi-occupancy">0%</div>
+        <div class="kpi-sub">Capacidad utilizada</div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-header">
+          <span>Tasa de No-Show</span>
+          <span>🛡️</span>
+        </div>
+        <div class="kpi-value" id="kpi-noshow">0%</div>
+        <div class="kpi-sub">Ausencias / Cancelaciones</div>
+      </div>
+    </div>
+
+    <!-- TABS -->
+    <div class="nav-tabs">
+      <button class="tab-btn active" onclick="switchTab('agenda')">📅 Agenda de Citas</button>
+      <button class="tab-btn" onclick="switchTab('familias')">👥 Familias y Beneficiarios (1:N)</button>
+      <button class="tab-btn" onclick="switchTab('valle')">⚡ Analítica de Horas Valle</button>
+    </div>
+
+    <!-- TAB 1: AGENDA DE CITAS -->
+    <div id="tab-agenda" class="tab-content active">
+      <div class="table-container">
+        <div class="table-header">
+          <h2>Lista de Citas en Tiempo Real (Actualización Continua)</h2>
+          <span style="font-size: 0.85rem; color: var(--text-muted);">Sincronizado con SQLite y WhatsApp</span>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Horario (12h am/pm)</th>
+              <th>Titular (WhatsApp)</th>
+              <th>Beneficiario / Paciente</th>
+              <th>Servicio Solicitado</th>
+              <th>Duración</th>
+              <th>Estado</th>
+              <th>Acción</th>
+            </tr>
+          </thead>
+          <tbody id="appointments-tbody">
+            <tr>
+              <td colspan="8" style="text-align: center; color: var(--text-muted); padding: 2rem;">Cargando citas...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- TAB 2: FAMILIAS Y SUB-USUARIOS -->
+    <div id="tab-familias" class="tab-content">
+      <div class="table-container" style="padding: 1.5rem;">
+        <h2 style="margin-bottom: 1rem; font-size: 1.15rem;">Directorio de Titulares y Sub-Usuarios (Beneficiarios)</h2>
+        <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1.5rem;">
+          Permite que una madre reserve para sus hijos, esposo o familiares bajo el mismo número telefónico, manteniendo el histórico clínico y de turnos diferenciado.
+        </p>
+        <div class="family-grid" id="beneficiaries-grid">
+          <!-- Tarjetas de beneficiarios dinámicas -->
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 3: ANALÍTICA DE HORAS VALLE -->
+    <div id="tab-valle" class="tab-content">
+      <div class="table-container" style="padding: 1.5rem;">
+        <h2 style="margin-bottom: 0.5rem; font-size: 1.15rem;">Detección Predictiva de Horas Valle y Capacidad Ociosa</h2>
+        <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1.5rem;">
+          Algoritmo analítico que calcula las franjas con baja ocupación proyectada (< 40%) para activar sugerencias de promociones automáticas vía WhatsApp.
+        </p>
+        <div class="valley-grid" id="valley-grid">
+          <!-- Tarjetas de horas valle dinámicas -->
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- FOOTER -->
+  <footer>
+    WAya (WhatsApp Analytics & Laya Intelligent Booking Engine) — Curso: Gestión y Análisis de Datos e Información — Procesamiento Local Edge AI
+  </footer>
+
+  <script>
+    // Reloj digital
+    function updateClock() {
+      const now = new Date();
+      let hours = now.getHours();
+      const minutes = String(now.getMinutes()).padStart(2, '0');
+      const seconds = String(now.getSeconds()).padStart(2, '0');
+      const period = hours >= 12 ? 'pm' : 'am';
+      hours = hours % 12 || 12;
+      document.getElementById('clock-display').textContent = `${hours}:${minutes}:${seconds} ${period}`;
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    // Tabs
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+      
+      event.target.classList.add('active');
+      document.getElementById('tab-' + tabId).classList.add('active');
+    }
+
+    // Modo Kiosk Pantalla Completa
+    function toggleFullScreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+        document.getElementById('fullscreen-btn').textContent = 'Salida Kiosk';
+      } else {
+        if (document.exitFullscreen) {
+          document.exitFullscreen();
+          document.getElementById('fullscreen-btn').textContent = '⛶ Modo Kiosk Tablet';
+        }
+      }
+    }
+
+    // Formateo de fecha y hora a 12h
+    function formatTime12(isoStr) {
+      if (!isoStr) return '--:--';
+      const parts = isoStr.split('T');
+      const timePart = parts[1] || '';
+      const [hStr, mStr] = timePart.split(':');
+      let h = parseInt(hStr, 10);
+      const m = mStr || '00';
+      const period = h >= 12 ? 'pm' : 'am';
+      h = h % 12 || 12;
+      return `${parts[0]} ${String(h).padStart(2, '0')}:${m} ${period}`;
+    }
+
+    // Cargar Estadísticas y Métricas
+    async function fetchStats() {
+      try {
+        const res = await fetch('/api/stats');
+        const data = await res.json();
+        document.getElementById('kpi-today').textContent = data.todayAppointments;
+        document.getElementById('kpi-revenue').textContent = `S/. ${data.estimatedRevenue}`;
+        document.getElementById('kpi-occupancy').textContent = `${data.occupancyRatePercent}%`;
+        document.getElementById('kpi-noshow').textContent = `${data.noShowRatePercent}%`;
+
+        // Render Horas Valle
+        const valleyGrid = document.getElementById('valley-grid');
+        valleyGrid.innerHTML = data.valleyHours.map(v => `
+          <div class="valley-card">
+            <h3>
+              <span>${v.day} (${v.timeRange})</span>
+              <span class="valley-badge">${v.occupancy}</span>
+            </h3>
+            <p style="font-size: 0.85rem; color: var(--text-muted);">
+              Franja de baja afluencia detectada por análisis histórico de agenda.
+            </p>
+            <div class="promo-recommendation">
+              💡 <strong>Regla Prescriptiva de Datos:</strong> Ofrecer proactivamente 15%-20% de descuento en tratamientos largos a quienes consulten por estos días para nivelar la ocupación.
+            </div>
+          </div>
+        `).join('');
+      } catch (err) {
+        console.error('Error cargando stats:', err);
+      }
+    }
+
+    // Cargar Citas
+    async function fetchAppointments() {
+      try {
+        const res = await fetch('/api/appointments');
+        const list = await res.json();
+        const tbody = document.getElementById('appointments-tbody');
+
+        if (list.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: var(--text-muted); padding: 2rem;">No hay citas registradas en la base de datos.</td></tr>`;
+          return;
+        }
+
+        tbody.innerHTML = list.map(a => {
+          const statusClass = a.status === 'confirmed' ? 'status-confirmed' : (a.status === 'cancelled' ? 'status-cancelled' : 'status-completed');
+          const statusLabel = a.status === 'confirmed' ? 'Confirmada' : (a.status === 'cancelled' ? 'Cancelada' : 'Completada');
+          const isBeneficiaryOther = a.beneficiary_name && a.beneficiary_name !== a.customer_name;
+
+          return `
+            <tr>
+              <td>#${a.id}</td>
+              <td style="font-weight: 600;">${formatTime12(a.start_time)}</td>
+              <td>
+                <strong>${a.customer_name}</strong><br>
+                <span style="font-family: 'JetBrains Mono'; font-size: 0.8rem; color: var(--text-muted);">${a.phone}</span>
+              </td>
+              <td>
+                <span>${a.beneficiary_name || a.customer_name}</span><br>
+                ${isBeneficiaryOther ? `<span class="beneficiary-tag">Beneficiario (${a.relationship || 'familiar'})</span>` : '<span style="font-size: 0.75rem; color: var(--text-muted);">Misma titular</span>'}
+              </td>
+              <td>${a.service_name}</td>
+              <td>${a.duration_minutes} min</td>
+              <td><span class="badge-status ${statusClass}">${statusLabel}</span></td>
+              <td>
+                ${a.status === 'confirmed' ? `<button class="btn-action" onclick="cancelAppointment(${a.id})">Cancelar</button>` : '<span style="color: var(--text-muted); font-size: 0.8rem;">-</span>'}
+              </td>
+            </tr>
+          `;
+        }).join('');
+      } catch (err) {
+        console.error('Error cargando citas:', err);
+      }
+    }
+
+    // Cargar Familias y Beneficiarios
+    async function fetchBeneficiaries() {
+      try {
+        const res = await fetch('/api/beneficiaries');
+        const list = await res.json();
+        const grid = document.getElementById('beneficiaries-grid');
+
+        if (list.length === 0) {
+          grid.innerHTML = `<p style="color: var(--text-muted);">No hay beneficiarios registrados aún.</p>`;
+          return;
+        }
+
+        grid.innerHTML = list.map(b => `
+          <div class="family-card">
+            <div class="family-title">
+              <span>👤 ${b.name}</span>
+              <span class="beneficiary-tag">${b.relationship}</span>
+            </div>
+            <div class="family-phone">WhatsApp: ${b.phone}</div>
+            <div style="font-size: 0.8rem; color: var(--text-muted);">
+              Registrado: ${b.created_at ? b.created_at.split('T')[0] : 'Hoy'}
+            </div>
+          </div>
+        `).join('');
+      } catch (err) {
+        console.error('Error cargando beneficiarios:', err);
+      }
+    }
+
+    // Cancelar Cita
+    async function cancelAppointment(id) {
+      if (!confirm(`¿Estás seguro de cancelar la cita #${id}? La disponibilidad volverá a abrirse de inmediato.`)) return;
+      try {
+        await fetch('/api/appointments/cancel', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id })
+        });
+        fetchStats();
+        fetchAppointments();
+      } catch (err) {
+        alert('Error al cancelar la cita');
+      }
+    }
+
+    // Inicializar y auto-refrescar cada 5 segundos
+    fetchStats();
+    fetchAppointments();
+    fetchBeneficiaries();
+    setInterval(() => {
+      fetchStats();
+      fetchAppointments();
+    }, 5000);
+  </script>
+</body>
+</html>

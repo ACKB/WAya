@@ -155,11 +155,17 @@ export class AIService {
 
     // 4. Si el formulario está COMPLETO (Tenemos X, Y, Z, A, B y M): emitir respuesta fija estructurada
     if (grounded.formJson.completo && grounded.formJson.respuesta_fija_confirmacion) {
-      console.log(`🎯 [Formulario 100% Completo] Confirmando cita para ${grounded.formJson.cliente}...`);
+      const titular = grounded.formJson.cliente_titular || grounded.formJson.cliente || 'Cliente';
+      const beneficiario = grounded.formJson.beneficiario || titular;
+      console.log(`🎯 [Formulario 100% Completo] Confirmando cita para Titular: ${titular}, Beneficiario: ${beneficiario}, Servicio: ${grounded.formJson.servicio} (${grounded.formJson.duracion_minutos} min)...`);
+      
       await CalendarService.bookAppointment({
         phone,
-        customerName: grounded.formJson.cliente || 'Cliente',
+        customerName: titular,
+        beneficiaryName: beneficiario,
+        relationship: grounded.formJson.parentesco || 'titular',
         serviceQuery: grounded.formJson.servicio || 'Servicio',
+        durationMinutes: grounded.formJson.duracion_minutos || 30,
         dateStr: grounded.formJson.fecha!,
         timeStr: grounded.formJson.hora_inicio_24!
       });

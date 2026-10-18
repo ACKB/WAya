@@ -233,5 +233,49 @@ Este archivo registra el historial de decisiones, requerimientos, arquitectura y
   - Compilado exitosamente con `pdflatex` dos veces consecutivas.
   - Generado el archivo PDF final: `WAya.pdf` (18 páginas de alta calidad editorial, con índice de contenidos, índice de tablas, índice de figuras, diagramas TikZ y tablas estructuradas sin errores de sintaxis).
 
+### 18. Sincronización con GitHub y Propuesta Estratégica Multi-Negocio para Hardware Ligero (18 de Octubre de 2026)
+- **Sincronización Git**:
+  - Limpieza de artefactos auxiliares de LaTeX (`.aux`, `.out`, `.toc`, `.lof`, `.lot`, `.log`) y actualización de `.gitignore`.
+  - Commit formal `feat: arquitectura slot-filling Laya, reloj 12h Peru, optimizacion GPU llama.cpp y documento academico WAya.tex` con 13 archivos impactados (+1208 / -105).
+  - Push exitoso a `origin/master` en GitHub (`https://github.com/ACKB/WAya.git`).
+- **Definición de Arquitectura Multi-Negocio y Hardware Eficiente**:
+  - Diseño del esquema *Tenant-Isolated SQLite* (`data/tenants/{business_id}.db`) y orquestación con modelo de lenguaje único compartido en GPU/CPU.
+  - Inyección dinámica de configuración contextual (catálogo, tonos de respuesta y horarios) por negocio.
+  - Cola en memoria de baja latencia para concurrencia limpia entre múltiples tiendas sin saturar la VRAM fija (~2.4 GB).
+  - Analítica de horas valle por negocio y reporte dominical automatizado al administrador vía WhatsApp.
+
+### 19. Evolución del Modelo de Datos: Dashboard Web Vivo, Relación Titular-Beneficiarios (1:N) y Citas Múltiples Consecutivas (18 de Octubre de 2026)
+- **Problemáticas Reales Identificadas por el Usuario**:
+  1. *Desactualización del mensaje semanal por cancelaciones*: Un mensaje de texto estático no refleja cancelaciones posteriores. Es indispensable un **Dashboard Web en tiempo real** como *Single Source of Truth*.
+  2. *Titular vs. Paciente Real (1:N)*: Las madres suelen reservar para hijos o esposos. Un número de WhatsApp no puede mapearse 1:1 a un cliente, sino que actúa como **Titular / Cuenta de Contacto** con múltiples **Beneficiarios / Sub-usuarios**.
+  3. *Citas Múltiples en la Misma Sesión*: Posibilidad de agendar procedimientos simultáneos o consecutivos (ej. Mamá tinte 2h + Hijo corte 45m = Bloque contiguo de 2h 45m o fechas diferenciadas).
+- **Decisión sobre el Modelo de IA y la Estructura**:
+  - **No cambiar el modelo de IA**: Mantener Llama 3.2 3B en hardware ligero. Un modelo más grande consumiría demasiada RAM/VRAM y seguiría fallando en aritmética de agendas.
+  - **Evolucionar la Estructura del Sistema**: Traspasar la lógica de "Carrito de Citas" y suma de tiempos al motor determinista Laya (TypeScript) y normalizar la base de datos con las tablas `contacts`, `beneficiaries` y `appointment_groups`.
+
+### 20. Implementación Integral: Beneficiarios (1:N), Suma de Duraciones, Dashboard Web y Appliance Tablet Kiosk S/. 3,000 (18 de Octubre de 2026)
+- **Base de Datos (`src/database/db.ts`)**:
+  - Creada la tabla `beneficiaries` (`id`, `phone`, `name`, `relationship`, `notes`, `created_at`).
+  - Aplicadas migraciones automáticas idempotentes en `appointments` y `appointment_drafts` para admitir `beneficiary_name`, `relationship`, `duration_minutes`, `price`, `services_json`, `total_duration_minutes` y `mode`.
+  - Agregado método `DatabaseService.getDashboardMetrics()` con KPIs de ocupación, ingresos en S/., tasa de no-show y cálculo de horas valle.
+- **Motor Laya (`src/ai/layaRouter.ts` y `src/calendar/slotCalculator.ts`)**:
+  - Detección de beneficiarios y parentesco en lenguaje natural (ej. *"para mi hijo Luis"*, *"para mi esposo"*).
+  - Detección de múltiples servicios con suma de tiempos en minutos (ej. Tinte 120m + Corte 45m = 165m = 2h 45m) y búsqueda de bloques contiguos en agenda.
+  - Confirmación fija personalizada según se agende para la titular, un beneficiario o ambos juntos.
+- **Dashboard Web en Tiempo Real (`src/dashboard/server.ts` y `src/dashboard/public/index.html`)**:
+  - Servidor HTTP nativo en Node.js (cero dependencias externas pesadas, consume < 15MB RAM).
+  - Endpoints REST `/api/stats`, `/api/appointments`, `/api/beneficiaries`, `/api/services` y `/api/appointments/cancel`.
+  - SPA moderna en Dark Mode con reloj 12h, botón **Modo Kiosk Pantalla Completa** para tablet de pared, lista de citas en vivo con auto-refresco cada 5 segundos, panel de Familias (1:N) y visualizador de Horas Valle con reglas prescriptivas de promociones.
+- **Documento Académico (`WAya.tex`)**:
+  - Actualizado el Capítulo 4 con la entidad `beneficiaries` y la relación 1:N.
+  - Actualizado el Capítulo 5 con la fundamentación del Dashboard Web como *Single Source of Truth*.
+  - Añadida al Capítulo 7 la propuesta de innovación de producto: **El Appliance Todo-en-Uno (Tablet Kiosk de Recepción - S/. 3,000)** con servidor Edge AI local integrado para MYPEs.
+  - Compilado exitosamente generando [WAya.pdf](file:///home/ackb/Downloads/Proyecto/WAya.pdf) (18 páginas).
+- **Validación Práctica**:
+  - `test-beneficiarios.ts`: Verificado caso real de Yolanda agendando para su hijo Luis a las 10:00 am (10:00 - 10:45 am).
+  - `test-dashboard.ts`: Endpoints probados con HTTP 200 y respuesta inmediata (< 2ms).
+
+
+
 
 

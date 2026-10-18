@@ -40,6 +40,22 @@ export class SlotCalculator {
     return days[date.getDay()];
   }
 
+  static formatDuration(minutes: number): string {
+    const h = Math.floor(minutes / 60);
+    const m = minutes % 60;
+    if (h > 0 && m > 0) {
+      return `${h} hora${h > 1 ? 's' : ''} y ${m} minutos`;
+    }
+    if (h > 0) {
+      return `${h} hora${h > 1 ? 's' : ''}`;
+    }
+    return `${m} minutos`;
+  }
+
+  static sumDurations(durations: number[]): number {
+    return durations.reduce((acc, curr) => acc + curr, 0);
+  }
+
   static formatDateEs(dateStr: string): { dayName: string; dayNumber: number; monthName: string; fullDateEs: string } {
     const months = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
     const [year, month, day] = dateStr.split('-').map(Number);

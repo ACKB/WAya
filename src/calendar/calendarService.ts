@@ -150,20 +150,21 @@ export class CalendarService {
   static async bookAppointment(params: {
     phone: string;
     customerName: string;
+    beneficiaryName?: string;
+    relationship?: string;
     serviceQuery: string;
+    durationMinutes?: number;
+    price?: number;
     dateStr: string; // YYYY-MM-DD
     timeStr: string; // HH:mm
   }): Promise<BookingResult> {
     const service = this.findService(params.serviceQuery);
-    if (!service) {
-      return {
-        success: false,
-        message: `Lo siento, no encontré el servicio "${params.serviceQuery}". Por favor confírmame el tratamiento.`
-      };
-    }
+    const serviceName = service ? service.name : params.serviceQuery;
+    const duration = params.durationMinutes || (service ? service.durationMinutes : 30);
+    const price = params.price || (service ? service.price : 0);
 
     const startMinutes = SlotCalculator.timeToMinutes(params.timeStr);
-    const endMinutes = startMinutes + service.durationMinutes;
+    const endMinutes = startMinutes + duration;
     const endTimeStr = SlotCalculator.minutesToTime(endMinutes);
 
     const startIso = `${params.dateStr}T${params.timeStr}:00`;
@@ -192,11 +193,15 @@ export class CalendarService {
         const startDateTime = new Date(`${startIso}`).toISOString();
         const endDateTime = new Date(`${endIso}`).toISOString();
 
+        const summaryText = params.beneficiaryName && params.beneficiaryName !== params.customerName
+          ? `Cita: ${serviceName} - ${params.beneficiaryName} (Titular: ${params.customerName})`
+          : `Cita: ${serviceName} - ${params.customerName}`;
+
         const event = await this.googleCalendar.events.insert({
           calendarId: config.calendar.calendarId,
           requestBody: {
-            summary: `Cita: ${service.name} - ${params.customerName}`,
-            description: `Cliente: ${params.customerName}\nTeléfono: ${params.phone}\nServicio: ${service.name} (${service.durationMinutes} min)\nPrecio: $${service.price}`,
+            summary: summaryText,
+            description: `Titular: ${params.customerName}\nBeneficiario: ${params.beneficiaryName || params.customerName}\nTeléfono: ${params.phone}\nServicio: ${serviceName} (${duration} min)\nPrecio: S/. ${price}`,
             start: { dateTime: startDateTime, timeZone: config.timezone },
             end: { dateTime: endDateTime, timeZone: config.timezone },
           },
@@ -211,7 +216,11 @@ export class CalendarService {
     const apptId = DatabaseService.createAppointment({
       phone: params.phone,
       customer_name: params.customerName,
-      service_name: service.name,
+      beneficiary_name: params.beneficiaryName || params.customerName,
+      relationship: params.relationship || 'titular',
+      service_name: serviceName,
+      duration_minutes: duration,
+      price: price,
       start_time: startIso,
       end_time: endIso,
       google_event_id: googleEventId,
@@ -221,10 +230,10 @@ export class CalendarService {
       success: true,
       appointmentId: apptId,
       googleEventId,
-      message: `¡Listo! Su cita para ${service.name} ha quedado agendada para el ${params.dateStr} a las ${params.timeStr} hrs.`,
+      message: `¡Listo! Su cita para ${serviceName} ha quedado agendada para el ${params.dateStr} a las ${params.timeStr} hrs.`,
       details: {
         customerName: params.customerName,
-        serviceName: service.name,
+        serviceName: serviceName,
         date: params.dateStr,
         startTime: params.timeStr,
         endTime: endTimeStr,
